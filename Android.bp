@@ -40,6 +40,8 @@ cc_defaults {
         // Only add dependencies that run in test images
         "//visibility:private",
     ],
+    c_std: "gnu99",
+    cpp_std: "gnu++11",
 }
 
 cc_binary {
