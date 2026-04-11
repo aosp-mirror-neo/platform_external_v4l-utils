@@ -504,12 +504,50 @@ int dvb_write_format_oneline(const char *fname,
 						data = BANDWIDTH_AUTO;
 				}
 				if (data >= table->size) {
-					sprintf(err_msg,
-						 _("value not supported"));
-					goto error;
-				}
+					char *data_name;
+					const char * const *attr_name = dvb_v5_attr_names[table->prop];
+					int warn = 0;
 
-				fprintf(fp, "%s", table->table[data]);
+					if (attr_name)
+						data_name = (char *)attr_name[data];
+					else
+						asprintf(&data_name, "%ui", data);
+
+					sprintf(err_msg,
+						 _("%s doesn't support %s on this format"),
+						dvb_v5_name[table->prop],
+						data_name);
+
+					if (!attr_name)
+						free(data_name);
+
+					switch (table->prop) {
+					case DTV_MODULATION:
+						data_name = "QAM/AUTO";
+						warn = 1;
+						break;
+					case DTV_INNER_FEC:
+					case DTV_TRANSMISSION_MODE:
+					case DTV_GUARD_INTERVAL:
+					case DTV_HIERARCHY:
+					case DTV_INVERSION:
+					case DTV_PILOT:
+					case DTV_ROLLOFF:
+						data_name = "AUTO";
+						warn = 1;
+						break;
+					}
+
+					if (!warn)
+						goto error;
+
+					fprintf(stderr, _("WARNING: %s while parsing entry %d of %s\n"),
+						err_msg, line, fname);
+
+					fprintf(fp, "%s", data_name);
+				} else {
+					fprintf(fp, "%s", table->table[data]);
+				}
 			} else {
 				switch (table->prop) {
 				case DTV_VIDEO_PID:
