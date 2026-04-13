@@ -199,10 +199,8 @@ void retrace_vidioc_reqbufs(int fd_retrace, json_object *ioctl_args)
 	free(ptr);
 }
 
-struct v4l2_plane *retrace_v4l2_plane(json_object *plane_obj, __u32 memory)
+void retrace_v4l2_plane(json_object *plane_obj, __u32 memory, struct v4l2_plane *ptr)
 {
-	struct v4l2_plane *ptr = (struct v4l2_plane *) calloc(1, sizeof(v4l2_plane));
-
 	json_object *bytesused_obj;
 	json_object_object_get_ex(plane_obj, "bytesused", &bytesused_obj);
 	ptr->bytesused = (__u32) json_object_get_int64(bytesused_obj);
@@ -222,8 +220,6 @@ struct v4l2_plane *retrace_v4l2_plane(json_object *plane_obj, __u32 memory)
 	json_object *data_offset_obj;
 	json_object_object_get_ex(plane_obj, "data_offset", &data_offset_obj);
 	ptr->data_offset = (__u32) json_object_get_int64(data_offset_obj);
-
-	return ptr;
 }
 
 struct v4l2_buffer *retrace_v4l2_buffer(json_object *ioctl_args)
@@ -284,9 +280,20 @@ struct v4l2_buffer *retrace_v4l2_buffer(json_object *ioctl_args)
 	    buf->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
 		json_object *planes_obj;
 		json_object_object_get_ex(m_obj, "planes", &planes_obj);
-		 /* TODO add planes > 0 */
-		json_object *plane_obj = json_object_array_get_idx(planes_obj, 0);
-		buf->m.planes = retrace_v4l2_plane(plane_obj, buf->memory);
+		buf->m.planes = (struct v4l2_plane *) calloc(buf->length, sizeof(struct v4l2_plane));
+
+		if (buf->m.planes == nullptr) {
+			line_info("\n\tMemory allocation failed.");
+			free(buf);
+			return nullptr;
+		}
+
+		for (__u32 i = 0; i < buf->length; i++) {
+			json_object *plane_obj = json_object_array_get_idx(planes_obj, i);
+			if (plane_obj == nullptr)
+				break;
+			retrace_v4l2_plane(plane_obj, buf->memory, &buf->m.planes[i]);
+		}
 	}
 
 	if (buf->type == V4L2_BUF_TYPE_VIDEO_CAPTURE ||
