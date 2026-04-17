@@ -523,6 +523,8 @@ int standby_resume_wakeup(struct node *node, unsigned me, unsigned la, bool inte
 static int standby_resume_wakeup_view_on(struct node *node, unsigned me, unsigned la, bool interactive,
 					 __u8 opcode, bool from_unregistered)
 {
+	__u16 pa = CEC_PHYS_ADDR_INVALID;
+
 	if (!is_tv(la, node->remote[la].prim_type))
 		return NOTAPPLICABLE;
 	if (me == CEC_LOG_ADDR_UNREGISTERED && from_unregistered)
@@ -558,6 +560,9 @@ static int standby_resume_wakeup_view_on(struct node *node, unsigned me, unsigne
 		return ret;
 
 	sleep(6);
+	doioctl(node, CEC_ADAP_G_PHYS_ADDR, &pa);
+	if (pa == CEC_PHYS_ADDR_INVALID)
+		announce("Note: HPD is low when in Standby");
 
 	ret = one_touch_play_view_on(node, from_unregistered ? CEC_LOG_ADDR_UNREGISTERED : me,
 				     la, interactive, from_unregistered, opcode);
@@ -567,7 +572,21 @@ static int standby_resume_wakeup_view_on(struct node *node, unsigned me, unsigne
 
 	announce("Wait for device to wake up");
 	unresponsive_cnt = 0;
-	fail_on_test(!poll_stable_power_status(node, me, la, CEC_OP_POWER_STATUS_ON, unresponsive_cnt));
+	if (from_unregistered && pa != CEC_PHYS_ADDR_INVALID) {
+		if (!poll_stable_power_status(node, me, la, CEC_OP_POWER_STATUS_ON, unresponsive_cnt)) {
+			warn("Failed to wake up from unregistered.\n");
+			ret = one_touch_play_view_on(node, me, la, interactive, false, opcode);
+			if (ret)
+				return ret;
+
+			announce("Wait for device to wake up");
+			unresponsive_cnt = 0;
+			fail_on_test(!poll_stable_power_status(node, me, la, CEC_OP_POWER_STATUS_ON, unresponsive_cnt));
+			return OK_NOT_SUPPORTED;
+		}
+	} else {
+		fail_on_test(!poll_stable_power_status(node, me, la, CEC_OP_POWER_STATUS_ON, unresponsive_cnt));
+	}
 	fail_on_test(interactive && !question("Is the device in On state?"));
 
 	struct cec_msg msg;
