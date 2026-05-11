@@ -1660,28 +1660,40 @@ int edid_state::parse_edid()
 	return failures ? -2 : 0;
 }
 
-/* InfoFrame parsing */
+/* InfoFrame/ELD parsing */
 
 static unsigned char infoframe[32];
-static unsigned if_size;
+
+static struct parse_data if_pdata = {
+	"InfoFrame",
+	infoframe,
+	sizeof(infoframe),
+	0
+};
 
 static unsigned char eld[128];
-static unsigned eld_size;
 
-static bool if_add_byte(const char *s)
+static struct parse_data eld_pdata = {
+	"ELD",
+	eld,
+	sizeof(eld),
+	0
+};
+
+static bool data_add_byte(parse_data &pdata, const char *s)
 {
 	char buf[3];
 
-	if (if_size == sizeof(infoframe))
+	if (pdata.buf_size == pdata.buf_max_size)
 		return false;
 	buf[0] = s[0];
 	buf[1] = s[1];
 	buf[2] = 0;
-	infoframe[if_size++] = strtoul(buf, NULL, 16);
+	pdata.buf[pdata.buf_size++] = strtoul(buf, NULL, 16);
 	return true;
 }
 
-static bool extract_if_hex(const char *s)
+static bool extract_data_hex(parse_data &pdata, const char *s)
 {
 	for (; *s; s++) {
 		if (isspace(*s) || strchr(ignore_chars, *s))
@@ -1695,16 +1707,17 @@ static bool extract_if_hex(const char *s)
 			odd_hex_digits = true;
 			return false;
 		}
-		if (!if_add_byte(s))
+		if (!data_add_byte(pdata, s))
 			return false;
 		s++;
 	}
-	return if_size;
+	return pdata.buf_size;
 }
 
-static bool extract_if(int fd)
+static bool extract_data(parse_data &pdata, int fd)
 {
-	std::vector<char> if_data;
+	std::string hdr = std::string("edid-decode ") + pdata.name + " (hex):";
+	std::vector<char> data;
 	char buf[128];
 
 	for (;;) {
@@ -1714,48 +1727,48 @@ static bool extract_if(int fd)
 			return false;
 		if (i == 0)
 			break;
-		if_data.insert(if_data.end(), buf, buf + i);
+		data.insert(data.end(), buf, buf + i);
 	}
 
-	if (if_data.empty()) {
-		if_size = 0;
+	if (data.empty()) {
+		pdata.buf_size = 0;
 		return false;
 	}
 	// Ensure it is safely terminated by a 0 char
-	if_data.push_back('\0');
+	data.push_back('\0');
 
-	const char *data = &if_data[0];
+	const char *d = &data[0];
 	const char *start;
 
 	/* Look for edid-decode output */
-	start = strstr(data, "edid-decode InfoFrame (hex):");
+	start = strstr(d, hdr.c_str());
 	if (start)
-		return extract_if_hex(strchr(start, ':') + 1);
+		return extract_data_hex(pdata, strchr(start, ':') + 1);
 
 	unsigned i;
 
-	for (i = 0; i < 32 && (isspace(data[i]) || strchr(ignore_chars, data[i]) ||
-			       tolower(data[i]) == 'x' || isxdigit(data[i])); i++);
+	for (i = 0; i < 32 && (isspace(d[i]) || strchr(ignore_chars, d[i]) ||
+			       tolower(d[i]) == 'x' || isxdigit(d[i])); i++);
 
 	if (i == 32)
-		return extract_if_hex(data);
+		return extract_data_hex(pdata, d);
 
 	// Drop the extra '\0' byte since we now assume binary data
-	if_data.pop_back();
+	data.pop_back();
 
-	if_size = if_data.size();
+	pdata.buf_size = data.size();
 
 	/* Assume binary */
-	if (if_size > sizeof(infoframe)) {
-		fprintf(stderr, "Binary InfoFrame length %u is greater than %zu.\n",
-			if_size, sizeof(infoframe));
+	if (pdata.buf_size > pdata.buf_max_size) {
+		fprintf(stderr, "Binary %s length %u is greater than %u.\n",
+			pdata.name, pdata.buf_size, pdata.buf_max_size);
 		return false;
 	}
-	memcpy(infoframe, data, if_size);
+	memcpy(pdata.buf, d, pdata.buf_size);
 	return true;
 }
 
-static int if_from_file(const char *from_file)
+static int data_from_file(parse_data &pdata, const char *from_file)
 {
 #ifdef O_BINARY
 	// Windows compatibility
@@ -1765,8 +1778,8 @@ static int if_from_file(const char *from_file)
 #endif
 	int fd;
 
-	memset(infoframe, 0, sizeof(infoframe));
-	if_size = 0;
+	memset(pdata.buf, 0, pdata.buf_max_size);
+	pdata.buf_size = 0;
 
 	if (!strcmp(from_file, "-")) {
 		from_file = "stdin";
@@ -1777,12 +1790,12 @@ static int if_from_file(const char *from_file)
 	}
 
 	odd_hex_digits = false;
-	if (!extract_if(fd)) {
-		if (!if_size) {
-			fprintf(stderr, "InfoFrame of '%s' was empty.\n", from_file);
+	if (!extract_data(pdata, fd)) {
+		if (!pdata.buf_size) {
+			fprintf(stderr, "%s of '%s' was empty.\n", pdata.name, from_file);
 			return -1;
 		}
-		fprintf(stderr, "InfoFrame extraction of '%s' failed: ", from_file);
+		fprintf(stderr, "%s extraction of '%s' failed: ", pdata.name, from_file);
 		if (odd_hex_digits)
 			fprintf(stderr, "odd number of hexadecimal digits.\n");
 		else
@@ -1794,18 +1807,18 @@ static int if_from_file(const char *from_file)
 	return 0;
 }
 
-static void show_if_msgs(bool is_warn)
+static void show_data_msgs(const char *name, bool is_warn)
 {
 	printf("\n%s:\n\n", is_warn ? "Warnings" : "Failures");
 	if (s_msgs[0][is_warn].empty())
 		return;
-	printf("InfoFrame:\n%s",
-	       s_msgs[0][is_warn].c_str());
+	printf("%s:\n%s", name, s_msgs[0][is_warn].c_str());
 }
 
-int edid_state::parse_if(const std::string &fname)
+int edid_state::parse_if_file(const std::string &fname)
 {
-	int ret = if_from_file(fname.c_str());
+	parse_data &pdata = if_pdata;
+	int ret = data_from_file(pdata, fname.c_str());
 	unsigned min_size = 4;
 	bool is_hdmi = false;
 
@@ -1816,8 +1829,8 @@ int edid_state::parse_if(const std::string &fname)
 	state.data_block.clear();
 
 	if (!options[OptSkipHexDump]) {
-		printf("edid-decode InfoFrame (hex):\n\n");
-		hex_block("", infoframe, if_size, false);
+		printf("edid-decode %s (hex):\n\n", pdata.name);
+		hex_block("", infoframe, pdata.buf_size, false);
 		if (options[OptOnlyHexDump])
 			return 0;
 		printf("\n----------------\n\n");
@@ -1828,46 +1841,46 @@ int edid_state::parse_if(const std::string &fname)
 		min_size++;
 	}
 
-	if (if_size < min_size) {
-		fail("InfoFrame is too small to parse.\n");
+	if (pdata.buf_size < min_size) {
+		fail("%s is too small to parse.\n", pdata.name);
 		return -1;
 	}
 
 	if (is_hdmi) {
-		do_checksum("HDMI InfoFrame ", infoframe, if_size, 3);
+		do_checksum("HDMI InfoFrame ", pdata.buf, pdata.buf_size, 3);
 		printf("\n");
-		memcpy(infoframe + 3, infoframe + 4, if_size - 4);
-		infoframe[0] &= 0x7f;
-		if_size--;
+		memcpy(pdata.buf + 3, pdata.buf + 4, pdata.buf_size - 4);
+		pdata.buf[0] &= 0x7f;
+		pdata.buf_size--;
 	}
 
-	switch (infoframe[0]) {
+	switch (pdata.buf[0]) {
 	case 0x01:
-		parse_if_vendor(infoframe, if_size);
+		parse_if_vendor(pdata.buf, pdata.buf_size);
 		break;
 	case 0x02:
-		parse_if_avi(infoframe, if_size);
+		parse_if_avi(pdata.buf, pdata.buf_size);
 		break;
 	case 0x03:
-		parse_if_spd(infoframe, if_size);
+		parse_if_spd(pdata.buf, pdata.buf_size);
 		break;
 	case 0x04:
-		parse_if_audio(infoframe, if_size);
+		parse_if_audio(pdata.buf, pdata.buf_size);
 		break;
 	case 0x05:
-		parse_if_mpeg_source(infoframe, if_size);
+		parse_if_mpeg_source(pdata.buf, pdata.buf_size);
 		break;
 	case 0x06:
-		parse_if_ntsc_vbi(infoframe, if_size);
+		parse_if_ntsc_vbi(pdata.buf, pdata.buf_size);
 		break;
 	case 0x07:
-		parse_if_drm(infoframe, if_size);
+		parse_if_drm(pdata.buf, pdata.buf_size);
 		break;
 	default:
-		if (infoframe[0] <= 0x1f)
-			fail("Reserved InfoFrame type %hhx.\n", infoframe[0]);
+		if (pdata.buf[0] <= 0x1f)
+			fail("Reserved %s type %hhx.\n", pdata.name, pdata.buf[0]);
 		else
-			fail("Forbidden InfoFrame type %hhx.\n", infoframe[0]);
+			fail("Forbidden %s type %hhx.\n", pdata.name, pdata.buf[0]);
 		break;
 	}
 
@@ -1884,161 +1897,21 @@ int edid_state::parse_if(const std::string &fname)
 
 	if (options[OptCheck]) {
 		if (warnings)
-			show_if_msgs(true);
+			show_data_msgs(pdata.name, true);
 		if (failures)
-			show_if_msgs(false);
+			show_data_msgs(pdata.name, false);
 	}
 
 	printf("\n%s conformity: %s\n",
-	       state.data_block.empty() ? "InfoFrame" : state.data_block.c_str(),
+	       state.data_block.empty() ? pdata.name : state.data_block.c_str(),
 	       failures ? "FAIL" : "PASS");
 	return failures ? -2 : 0;
 }
 
-static bool eld_add_byte(const char *s)
+int edid_state::parse_eld_file(const std::string &fname)
 {
-	char buf[3];
-
-	if (eld_size == sizeof(eld))
-		return false;
-	buf[0] = s[0];
-	buf[1] = s[1];
-	buf[2] = 0;
-	eld[eld_size++] = strtoul(buf, NULL, 16);
-	return true;
-}
-
-static bool extract_eld_hex(const char *s)
-{
-	for (; *s; s++) {
-		if (isspace(*s) || strchr(ignore_chars, *s))
-			continue;
-
-		if (*s == '0' && tolower(s[1]) == 'x') {
-			s++;
-			continue;
-		}
-
-		/* Read one or two hex digits from the log */
-		if (!isxdigit(s[0]))
-			break;
-
-		if (!isxdigit(s[1])) {
-			odd_hex_digits = true;
-			return false;
-		}
-		if (!eld_add_byte(s))
-			return false;
-		s++;
-	}
-	return eld_size;
-}
-
-static bool extract_eld(int fd)
-{
-	std::vector<char> eld_data;
-	char buf[128];
-
-	for (;;) {
-		ssize_t i = read(fd, buf, sizeof(buf));
-
-		if (i < 0)
-			return false;
-		if (i == 0)
-			break;
-		eld_data.insert(eld_data.end(), buf, buf + i);
-	}
-
-	if (eld_data.empty()) {
-		eld_size = 0;
-		return false;
-	}
-	// Ensure it is safely terminated by a 0 char
-	eld_data.push_back('\0');
-
-	const char *data = &eld_data[0];
-	const char *start;
-
-	/* Look for edid-decode output */
-	start = strstr(data, "edid-decode ELD (hex):");
-	if (start)
-		return extract_eld_hex(strchr(start, ':') + 1);
-
-	unsigned i;
-
-	/* Is the EDID provided in hex? */
-	for (i = 0; i < 32 && (isspace(data[i]) || strchr(ignore_chars, data[i]) ||
-			       tolower(data[i]) == 'x' || isxdigit(data[i])); i++);
-
-	if (i == 32)
-		return extract_eld_hex(data);
-
-	// Drop the extra '\0' byte since we now assume binary data
-	eld_data.pop_back();
-
-	eld_size = eld_data.size();
-
-	/* Assume binary */
-	if (eld_size > sizeof(eld)) {
-		fprintf(stderr, "Binary ELD length %u is greater than %zu.\n",
-			eld_size, sizeof(eld));
-		return false;
-	}
-	memcpy(eld, data, eld_size);
-	return true;
-}
-
-static int eld_from_file(const char *from_file)
-{
-#ifdef O_BINARY
-	// Windows compatibility
-	int flags = O_RDONLY | O_BINARY;
-#else
-	int flags = O_RDONLY;
-#endif
-	int fd;
-
-	memset(eld, 0, sizeof(eld));
-	eld_size = 0;
-
-	if (!strcmp(from_file, "-")) {
-		from_file = "stdin";
-		fd = 0;
-	} else if ((fd = open(from_file, flags)) == -1) {
-		perror(from_file);
-		return -1;
-	}
-
-	odd_hex_digits = false;
-	if (!extract_eld(fd)) {
-		if (!eld_size) {
-			fprintf(stderr, "ELD of '%s' was empty.\n", from_file);
-			return -1;
-		}
-		fprintf(stderr, "ELD extraction of '%s' failed: ", from_file);
-		if (odd_hex_digits)
-			fprintf(stderr, "odd number of hexadecimal digits.\n");
-		else
-			fprintf(stderr, "unknown format.\n");
-		return -1;
-	}
-	close(fd);
-
-	return 0;
-}
-
-static void show_eld_msgs(bool is_warn)
-{
-	printf("\n%s:\n\n", is_warn ? "Warnings" : "Failures");
-	if (s_msgs[0][is_warn].empty())
-		return;
-	printf("ELD:\n%s",
-	       s_msgs[0][is_warn].c_str());
-}
-
-int edid_state::parse_eld(const std::string &fname)
-{
-	int ret = eld_from_file(fname.c_str());
+	parse_data &pdata = eld_pdata;
+	int ret = data_from_file(pdata, fname.c_str());
 	unsigned int min_size = 4;
 	unsigned baseline_size;
 	unsigned char ver;
@@ -2047,19 +1920,19 @@ int edid_state::parse_eld(const std::string &fname)
 		return ret;
 
 	if (!options[OptSkipHexDump]) {
-		printf("edid-decode ELD (hex):\n\n");
-		hex_block("", eld, eld_size, false);
+		printf("edid-decode %s (hex):\n\n", pdata.name);
+		hex_block("", pdata.buf, pdata.buf_size, false);
 		if (options[OptOnlyHexDump])
 			return 0;
 		printf("\n----------------\n\n");
 	}
 
-	if (eld_size < min_size) {
-		fail("ELD is too small to parse.\n");
+	if (pdata.buf_size < min_size) {
+		fail("%s is too small to parse.\n", pdata.name);
 		return -1;
 	}
 
-	ver = eld[0] >> 3;
+	ver = pdata.buf[0] >> 3;
 	switch (ver) {
 	case 1:
 		warn("Obsolete Baseline ELD version (%d)\n", ver);
@@ -2072,11 +1945,11 @@ int edid_state::parse_eld(const std::string &fname)
 		break;
 	}
 
-	baseline_size = eld[2] * 4;
+	baseline_size = pdata.buf[2] * 4;
 	if (baseline_size > 80)
 		warn("ELD too big\n");
 
-	parse_eld_baseline(&eld[4], baseline_size);
+	parse_eld_baseline(&pdata.buf[4], baseline_size);
 
 	if (!options[OptCheck] && !options[OptCheckInline])
 		return 0;
@@ -2091,9 +1964,9 @@ int edid_state::parse_eld(const std::string &fname)
 
 	if (options[OptCheck]) {
 		if (warnings)
-			show_eld_msgs(true);
+			show_data_msgs(pdata.name, true);
 		if (failures)
-			show_eld_msgs(false);
+			show_data_msgs(pdata.name, false);
 	}
 
 	printf("\n%s conformity: %s\n",
@@ -2858,6 +2731,7 @@ int main(int argc, char **argv)
 	}
 
 	if (optind == argc) {
+		ret = 0;
 		if (adapter_fd >= 0 && options[OptI2CEDID]) {
 			ret = read_edid(adapter_fd, edid, options[OptPhysicalAddress]);
 			if (ret > 0) {
@@ -2931,7 +2805,7 @@ int main(int argc, char **argv)
 			s_msgs[i][0].clear();
 			s_msgs[i][1].clear();
 		}
-		int r = state.parse_if(n);
+		int r = state.parse_if_file(n);
 		if (r && !ret)
 			ret = r;
 	}
@@ -2946,7 +2820,7 @@ int main(int argc, char **argv)
 			s_msgs[i][0].clear();
 			s_msgs[i][1].clear();
 		}
-		int r = state.parse_eld(n);
+		int r = state.parse_eld_file(n);
 		if (r && !ret)
 			ret = r;
 	}
