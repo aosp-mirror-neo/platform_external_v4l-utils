@@ -565,6 +565,9 @@ struct edid_state {
 	int parse_eld_file(const std::string &fname);
 	void parse_eld_baseline(const unsigned char *x, unsigned size);
 
+	int parse_scdc_pdata(parse_data &pdata);
+	void parse_scdc(const unsigned char *scdc, unsigned size);
+
 	int parse_hdcp_pdata(parse_data &pdata);
 	void parse_hdcp(const unsigned char *hdcp, unsigned size);
 };
@@ -657,6 +660,7 @@ int read_edid(int adapter_fd, unsigned char *edid, bool silent = false);
 int test_reliability(int adapter_fd, unsigned secs, unsigned msleep);
 int read_hdcp(int adapter_fd, parse_data &pdata);
 int read_hdcp_ri(int adapter_fd, double ri_time);
+int read_scdc(int adapter_fd, parse_data &pdata, bool update_only);
 
 #else
 
@@ -664,6 +668,7 @@ static inline int read_edid(int adapter_fd, unsigned char *edid) { return -ENODE
 static inline int test_reliability(int adapter_fd, unsigned secs, unsigned msleep) { return -ENODEV; }
 static inline int read_hdcp(int adapter_fd) { return -ENODEV; }
 static inline int read_hdcp_ri(int adapter_fd, double ri_time) { return -ENODEV; }
+static inline int read_scdc(int adapter_fd, parse_data &pdata, bool update_only) { return -ENODEV; }
 
 #endif
 

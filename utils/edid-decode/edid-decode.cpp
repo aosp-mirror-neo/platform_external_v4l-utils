@@ -44,6 +44,7 @@ enum Option {
 	OptBlockHexDump = 'b',
 	OptCheck = 'c',
 	OptCheckInline = 'C',
+	OptSCDC = 'D',
 	OptEld = 'E',
 	OptFBModeTimings = 'F',
 	OptHelp = 'h',
@@ -67,6 +68,8 @@ enum Option {
 	OptVersion,
 	OptDiag,
 	OptI2CEDID,
+	OptI2CSCDC,
+	OptI2CSCDCUpdate,
 	OptI2CHDCP,
 	OptI2CHDCPRi,
 	OptI2CTestReliability,
@@ -115,6 +118,8 @@ static struct option long_options[] = {
 #ifdef __HAS_I2C_DEV__
 	{ "i2c-adapter", required_argument, 0, OptI2CAdapter },
 	{ "i2c-edid", no_argument, 0, OptI2CEDID },
+	{ "i2c-scdc-update", no_argument, 0, OptI2CSCDCUpdate },
+	{ "i2c-scdc", no_argument, 0, OptI2CSCDC },
 	{ "i2c-hdcp", no_argument, 0, OptI2CHDCP },
 	{ "i2c-hdcp-ri", required_argument, 0, OptI2CHDCPRi },
 	{ "i2c-test-reliability", optional_argument, 0, OptI2CTestReliability },
@@ -134,6 +139,7 @@ static struct option long_options[] = {
 	{ "list-rids", no_argument, 0, OptListRIDs },
 	{ "infoframe", required_argument, 0, OptInfoFrame },
 	{ "eld", required_argument, 0, OptEld },
+	{ "scdc", required_argument, 0, OptSCDC },
 	{ "hdcp", required_argument, 0, OptHDCP },
 	{ 0, 0, 0, 0 }
 };
@@ -180,6 +186,8 @@ static void usage(void)
 	       "  -a, --i2c-adapter <dev> Use <dev> to access the DDC lines.\n"
 	       "                        If <dev> starts with a digit, then /dev/i2c-<dev> is used.\n"
 	       "  --i2c-edid		Read the EDID from the DDC lines.\n"
+	       "  --i2c-scdc		Read the SCDC from the DDC lines.\n"
+	       "  --i2c-scdc-update	Read the SCDC Update information (bytes 0x10-0x11) from the DDC lines.\n"
 	       "  --i2c-hdcp		Read the HDCP from the DDC lines.\n"
 	       "  --i2c-hdcp-ri=<t>	Read and print the HDCP Ri information every <t> seconds.\n"
 	       "  --i2c-test-reliability [duration=<secs>][,sleep=<msecs>]\n"
@@ -232,9 +240,9 @@ static void usage(void)
 	       "  --list-rids           List all known RIDs.\n"
 	       "  --list-rid-timings <rid> List all timings for RID <rid> or all known RIDs if <rid> is 0.\n"
 	       "  -I, --infoframe <file> Parse the InfoFrame from <file> (or stdin if '-' was specified) that was sent to this display.\n"
-	       "                        This option can be specified multiple times for different InfoFrame files.\n"
 	       "  -E, --eld <file>      Parse the EDID-Like Data, ELD from <file> (or stdin if '-' was specified).\n"
 	       "                        This option can be specified multiple times for different ELD files.\n"
+	       "  -D, --scdc <file>     Parse the SCDC data from <file> (or stdin if '-' was specified).\n"
 	       "  -J, --hdcp <file>     Parse the HDCP data from <file> (or stdin if '-' was specified).\n"
 	       "  -h, --help            Display this help message.\n");
 }
@@ -1663,7 +1671,7 @@ int edid_state::parse_edid()
 	return failures ? -2 : 0;
 }
 
-/* InfoFrame/HDCP/ELD parsing */
+/* InfoFrame/ELD/SCDC/HDCP parsing */
 
 static unsigned char infoframe[32];
 
@@ -1680,6 +1688,15 @@ static struct parse_data eld_pdata = {
 	"ELD",
 	eld,
 	sizeof(eld),
+	0
+};
+
+static unsigned char scdc[256];
+
+static struct parse_data scdc_pdata = {
+	"SCDC",
+	scdc,
+	sizeof(scdc),
 	0
 };
 
@@ -1984,6 +2001,58 @@ int edid_state::parse_eld_file(const std::string &fname)
 
 	printf("\n%s conformity: %s\n",
 	       state.data_block.empty() ? "ELD" : state.data_block.c_str(),
+	       failures ? "FAIL" : "PASS");
+	return failures ? -2 : 0;
+}
+
+int edid_state::parse_scdc_pdata(parse_data &pdata)
+{
+	state.block_nr = 0;
+	state.data_block.clear();
+
+	if (!options[OptSkipHexDump]) {
+		printf("edid-decode %s (hex):\n\n", pdata.name);
+		if (pdata.buf_size == 2) {
+			hex_block("", pdata.buf, pdata.buf_size, false);
+		} else {
+			hex_block("", pdata.buf, 128, false);
+			if (pdata.buf_size > 128) {
+				printf("\n");
+				hex_block("", pdata.buf + 128, pdata.buf_size - 128, false);
+			}
+		}
+		if (options[OptOnlyHexDump])
+			return 0;
+		printf("\n----------------\n\n");
+	}
+
+	if (pdata.buf_size < 2) {
+		fail("%s is too small to parse.\n", pdata.name);
+		return -1;
+	}
+
+	parse_scdc(pdata.buf, pdata.buf_size == 2 ? 2 : (pdata.buf_size <= 128 ? 128 : 256));
+
+	if (!options[OptCheck] && !options[OptCheckInline])
+		return 0;
+
+	printf("\n----------------\n");
+
+	if (!options[OptSkipSHA] && strlen(STRING(SHA))) {
+		options[OptSkipSHA] = 1;
+		printf("\n");
+		print_version();
+	}
+
+	if (options[OptCheck]) {
+		if (warnings)
+			show_data_msgs(pdata.name, true);
+		if (failures)
+			show_data_msgs(pdata.name, false);
+	}
+
+	printf("\n%s conformity: %s\n",
+	       state.data_block.empty() ? pdata.name : state.data_block.c_str(),
 	       failures ? "FAIL" : "PASS");
 	return failures ? -2 : 0;
 }
@@ -2619,6 +2688,7 @@ int main(int argc, char **argv)
 	double hdcp_ri_sleep = 0;
 	std::vector<std::string> if_names;
 	std::vector<std::string> eld_names;
+	std::string scdc_name;
 	std::string hdcp_name;
 	unsigned test_rel_duration = 0;
 	unsigned test_rel_msleep = 50;
@@ -2773,6 +2843,9 @@ int main(int argc, char **argv)
 		case OptInfoFrame:
 			if_names.push_back(optarg);
 			break;
+		case OptSCDC:
+			scdc_name = optarg;
+			break;
 		case OptHDCP:
 			hdcp_name = optarg;
 			break;
@@ -2833,6 +2906,10 @@ int main(int argc, char **argv)
 				ret = 0;
 			}
 		} else if (adapter_fd >= 0) {
+			if (options[OptI2CSCDC])
+				ret = read_scdc(adapter_fd, scdc_pdata, false);
+			if (!ret && options[OptI2CSCDCUpdate])
+				ret = read_scdc(adapter_fd, scdc_pdata, true);
 			if (!ret && options[OptI2CHDCP])
 				ret = read_hdcp(adapter_fd, hdcp_pdata);
 			if (!ret && options[OptI2CHDCPRi])
@@ -2840,7 +2917,8 @@ int main(int argc, char **argv)
 			if (options[OptI2CTestReliability])
 				ret = test_reliability(adapter_fd, test_rel_duration, test_rel_msleep);
 		} else if ((options[OptInfoFrame] || options[OptEld] ||
-			    options[OptHDCP]) && !options[OptGTF]) {
+			    options[OptSCDC] || options[OptHDCP]) &&
+			   !options[OptGTF]) {
 			ret = 0;
 		} else {
 			ret = edid_from_file("-", stdout);
@@ -2888,6 +2966,26 @@ int main(int argc, char **argv)
 		ret = state.parse_edid();
 
 	bool show_line = state.edid_size;
+
+	if (scdc_name.length()) {
+		int r = data_from_file(scdc_pdata, scdc_name.c_str());
+		if (r && !ret)
+			ret = r;
+	}
+	if (scdc_pdata.buf_size) {
+		if (show_line)
+			printf("\n================\n\n");
+		show_line = true;
+
+		state.warnings = state.failures = 0;
+		for (unsigned i = 0; i < EDID_MAX_BLOCKS + 1; i++) {
+			s_msgs[i][0].clear();
+			s_msgs[i][1].clear();
+		}
+		int r = state.parse_scdc_pdata(scdc_pdata);
+		if (r && !ret)
+			ret = r;
+	}
 
 	if (hdcp_name.length()) {
 		int r = hdcp_from_file(hdcp_pdata, hdcp_name.c_str());

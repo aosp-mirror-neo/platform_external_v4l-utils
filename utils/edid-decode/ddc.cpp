@@ -41,6 +41,9 @@
 #define EDID_ADDR 0x50
 #define SEGMENT_POINTER_ADDR 0x30
 
+// i2c address for SCDC
+#define SCDC_ADDR 0x54
+
 // i2c addresses for HDCP
 #define HDCP_PRIM_ADDR 0x3a
 #define HDCP_SEC_ADDR 0x3b
@@ -415,5 +418,59 @@ int read_hdcp_ri(int adapter_fd, double ri_time)
 		fflush(stdout);
 		usleep(ri_time * 1000000);
 	}
+	return 0;
+}
+
+static int read_scdc_registers(int adapter_fd, __u8 *scdc, bool update_only)
+{
+	struct i2c_rdwr_ioctl_data data;
+	struct i2c_msg write_message;
+	struct i2c_msg read_message;
+	__u8 offset = update_only ? 0x10 : 0;
+	int err;
+
+	write_message = {
+		.addr = SCDC_ADDR,
+		.len = 1,
+		.buf = &offset
+	};
+	read_message = {
+		.addr = SCDC_ADDR,
+		.flags = I2C_M_RD,
+		.len = (__u16)(update_only ? 2 : 128),
+		.buf = scdc
+	};
+
+	struct i2c_msg msgs[2] = { write_message, read_message };
+
+	data.msgs = msgs + update_only;
+	data.nmsgs = ARRAY_SIZE(msgs) - update_only;
+	err = ioctl(adapter_fd, I2C_RDWR, &data);
+
+	if (err < 0) {
+		fprintf(stderr, "Unable to read SCDC %02x-%02x: %s\n",
+			offset, offset + read_message.len - 1, strerror(errno));
+		return -1;
+	}
+	if (update_only)
+		return 0;
+	offset = 128;
+	data.msgs[1].buf = scdc + 128;
+	err = ioctl(adapter_fd, I2C_RDWR, &data);
+
+	if (err < 0) {
+		fprintf(stderr, "Unable to read SCDC %02x-%02x: %s\n",
+			offset, offset + read_message.len - 1, strerror(errno));
+		return -1;
+	}
+	return 0;
+}
+
+int read_scdc(int adapter_fd, parse_data &pdata, bool update_only)
+{
+	if (read_scdc_registers(adapter_fd, pdata.buf, update_only))
+		return -1;
+
+	pdata.buf_size = update_only ? 2 : 256;
 	return 0;
 }
