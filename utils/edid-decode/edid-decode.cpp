@@ -1803,6 +1803,98 @@ static void show_if_msgs(bool is_warn)
 	       s_msgs[0][is_warn].c_str());
 }
 
+int edid_state::parse_if(const std::string &fname)
+{
+	int ret = if_from_file(fname.c_str());
+	unsigned min_size = 4;
+	bool is_hdmi = false;
+
+	if (ret)
+		return ret;
+
+	state.block_nr = 0;
+	state.data_block.clear();
+
+	if (!options[OptSkipHexDump]) {
+		printf("edid-decode InfoFrame (hex):\n\n");
+		hex_block("", infoframe, if_size, false);
+		if (options[OptOnlyHexDump])
+			return 0;
+		printf("\n----------------\n\n");
+	}
+
+	if (infoframe[0] >= 0x80) {
+		is_hdmi = true;
+		min_size++;
+	}
+
+	if (if_size < min_size) {
+		fail("InfoFrame is too small to parse.\n");
+		return -1;
+	}
+
+	if (is_hdmi) {
+		do_checksum("HDMI InfoFrame ", infoframe, if_size, 3);
+		printf("\n");
+		memcpy(infoframe + 3, infoframe + 4, if_size - 4);
+		infoframe[0] &= 0x7f;
+		if_size--;
+	}
+
+	switch (infoframe[0]) {
+	case 0x01:
+		parse_if_vendor(infoframe, if_size);
+		break;
+	case 0x02:
+		parse_if_avi(infoframe, if_size);
+		break;
+	case 0x03:
+		parse_if_spd(infoframe, if_size);
+		break;
+	case 0x04:
+		parse_if_audio(infoframe, if_size);
+		break;
+	case 0x05:
+		parse_if_mpeg_source(infoframe, if_size);
+		break;
+	case 0x06:
+		parse_if_ntsc_vbi(infoframe, if_size);
+		break;
+	case 0x07:
+		parse_if_drm(infoframe, if_size);
+		break;
+	default:
+		if (infoframe[0] <= 0x1f)
+			fail("Reserved InfoFrame type %hhx.\n", infoframe[0]);
+		else
+			fail("Forbidden InfoFrame type %hhx.\n", infoframe[0]);
+		break;
+	}
+
+	if (!options[OptCheck] && !options[OptCheckInline])
+		return 0;
+
+	printf("\n----------------\n");
+
+	if (!options[OptSkipSHA] && strlen(STRING(SHA))) {
+		options[OptSkipSHA] = 1;
+		printf("\n");
+		print_version();
+	}
+
+	if (options[OptCheck]) {
+		if (warnings)
+			show_if_msgs(true);
+		if (failures)
+			show_if_msgs(false);
+	}
+
+	printf("\n%s conformity: %s\n",
+	       state.data_block.empty() ? "InfoFrame" : state.data_block.c_str(),
+	       failures ? "FAIL" : "PASS");
+	return failures ? -2 : 0;
+}
+
 static bool eld_add_byte(const char *s)
 {
 	char buf[3];
@@ -2006,97 +2098,6 @@ int edid_state::parse_eld(const std::string &fname)
 
 	printf("\n%s conformity: %s\n",
 	       state.data_block.empty() ? "ELD" : state.data_block.c_str(),
-	       failures ? "FAIL" : "PASS");
-	return failures ? -2 : 0;
-}
-int edid_state::parse_if(const std::string &fname)
-{
-	int ret = if_from_file(fname.c_str());
-	unsigned min_size = 4;
-	bool is_hdmi = false;
-
-	if (ret)
-		return ret;
-
-	state.block_nr = 0;
-	state.data_block.clear();
-
-	if (!options[OptSkipHexDump]) {
-		printf("edid-decode InfoFrame (hex):\n\n");
-		hex_block("", infoframe, if_size, false);
-		if (options[OptOnlyHexDump])
-			return 0;
-		printf("\n----------------\n\n");
-	}
-
-	if (infoframe[0] >= 0x80) {
-		is_hdmi = true;
-		min_size++;
-	}
-
-	if (if_size < min_size) {
-		fail("InfoFrame is too small to parse.\n");
-		return -1;
-	}
-
-	if (is_hdmi) {
-		do_checksum("HDMI InfoFrame ", infoframe, if_size, 3);
-		printf("\n");
-		memcpy(infoframe + 3, infoframe + 4, if_size - 4);
-		infoframe[0] &= 0x7f;
-		if_size--;
-	}
-
-	switch (infoframe[0]) {
-	case 0x01:
-		parse_if_vendor(infoframe, if_size);
-		break;
-	case 0x02:
-		parse_if_avi(infoframe, if_size);
-		break;
-	case 0x03:
-		parse_if_spd(infoframe, if_size);
-		break;
-	case 0x04:
-		parse_if_audio(infoframe, if_size);
-		break;
-	case 0x05:
-		parse_if_mpeg_source(infoframe, if_size);
-		break;
-	case 0x06:
-		parse_if_ntsc_vbi(infoframe, if_size);
-		break;
-	case 0x07:
-		parse_if_drm(infoframe, if_size);
-		break;
-	default:
-		if (infoframe[0] <= 0x1f)
-			fail("Reserved InfoFrame type %hhx.\n", infoframe[0]);
-		else
-			fail("Forbidden InfoFrame type %hhx.\n", infoframe[0]);
-		break;
-	}
-
-	if (!options[OptCheck] && !options[OptCheckInline])
-		return 0;
-
-	printf("\n----------------\n");
-
-	if (!options[OptSkipSHA] && strlen(STRING(SHA))) {
-		options[OptSkipSHA] = 1;
-		printf("\n");
-		print_version();
-	}
-
-	if (options[OptCheck]) {
-		if (warnings)
-			show_if_msgs(true);
-		if (failures)
-			show_if_msgs(false);
-	}
-
-	printf("\n%s conformity: %s\n",
-	       state.data_block.empty() ? "InfoFrame" : state.data_block.c_str(),
 	       failures ? "FAIL" : "PASS");
 	return failures ? -2 : 0;
 }
