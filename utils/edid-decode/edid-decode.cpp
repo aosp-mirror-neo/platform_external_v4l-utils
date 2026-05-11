@@ -1691,6 +1691,7 @@ static struct parse_data eld_pdata = {
 	0
 };
 
+#ifndef __EMSCRIPTEN__
 static unsigned char scdc[256];
 
 static struct parse_data scdc_pdata = {
@@ -1709,6 +1710,7 @@ static struct parse_data hdcp_pdata = {
 	sizeof(hdcp),
 	0
 };
+#endif
 
 static bool data_add_byte(parse_data &pdata, const char *s)
 {
@@ -2057,22 +2059,6 @@ int edid_state::parse_scdc_pdata(parse_data &pdata)
 	return failures ? -2 : 0;
 }
 
-static int hdcp_from_file(parse_data &pdata, const char *from_file)
-{
-	int ret = data_from_file(pdata, from_file);
-
-	if (ret < 0)
-		return ret;
-
-	unsigned char *hdcp_prim = &pdata.buf[0];
-	unsigned char *ksv_fifo = hdcp_prim + 256;
-	unsigned char *hdcp_sec = ksv_fifo + 128 * 5;
-	unsigned kvs_fifo_sz = hdcp_prim[0x41] & 0x7f;
-	memcpy(hdcp_sec, ksv_fifo + kvs_fifo_sz * 5, 256);
-	memset(ksv_fifo + kvs_fifo_sz * 5, 0, (128 - kvs_fifo_sz) * 5);
-	return 0;
-}
-
 int edid_state::parse_hdcp_pdata(parse_data &pdata)
 {
 	state.block_nr = 0;
@@ -2134,6 +2120,22 @@ int edid_state::parse_hdcp_pdata(parse_data &pdata)
 }
 
 #ifndef __EMSCRIPTEN__
+
+static int hdcp_from_file(parse_data &pdata, const char *from_file)
+{
+	int ret = data_from_file(pdata, from_file);
+
+	if (ret < 0)
+		return ret;
+
+	unsigned char *hdcp_prim = &pdata.buf[0];
+	unsigned char *ksv_fifo = hdcp_prim + 256;
+	unsigned char *hdcp_sec = ksv_fifo + 128 * 5;
+	unsigned kvs_fifo_sz = hdcp_prim[0x41] & 0x7f;
+	memcpy(hdcp_sec, ksv_fifo + kvs_fifo_sz * 5, 256);
+	memset(ksv_fifo + kvs_fifo_sz * 5, 0, (128 - kvs_fifo_sz) * 5);
+	return 0;
+}
 
 static unsigned char crc_calc(const unsigned char *b)
 {
