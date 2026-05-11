@@ -49,6 +49,7 @@ enum Option {
 	OptHelp = 'h',
 	OptOnlyHexDump = 'H',
 	OptInfoFrame = 'I',
+	OptHDCP = 'J',
 	OptLongTimings = 'L',
 	OptNativeResolution = 'n',
 	OptNTSC = 'N',
@@ -133,6 +134,7 @@ static struct option long_options[] = {
 	{ "list-rids", no_argument, 0, OptListRIDs },
 	{ "infoframe", required_argument, 0, OptInfoFrame },
 	{ "eld", required_argument, 0, OptEld },
+	{ "hdcp", required_argument, 0, OptHDCP },
 	{ 0, 0, 0, 0 }
 };
 
@@ -233,6 +235,7 @@ static void usage(void)
 	       "                        This option can be specified multiple times for different InfoFrame files.\n"
 	       "  -E, --eld <file>      Parse the EDID-Like Data, ELD from <file> (or stdin if '-' was specified).\n"
 	       "                        This option can be specified multiple times for different ELD files.\n"
+	       "  -J, --hdcp <file>     Parse the HDCP data from <file> (or stdin if '-' was specified).\n"
 	       "  -h, --help            Display this help message.\n");
 }
 #endif
@@ -1660,7 +1663,7 @@ int edid_state::parse_edid()
 	return failures ? -2 : 0;
 }
 
-/* InfoFrame/ELD parsing */
+/* InfoFrame/HDCP/ELD parsing */
 
 static unsigned char infoframe[32];
 
@@ -1677,6 +1680,16 @@ static struct parse_data eld_pdata = {
 	"ELD",
 	eld,
 	sizeof(eld),
+	0
+};
+
+// primary data, KSV FIFO data, and secondary data
+static unsigned char hdcp[256 + 128 * 5 + 256];
+
+static struct parse_data hdcp_pdata = {
+	"HDCP",
+	hdcp,
+	sizeof(hdcp),
 	0
 };
 
@@ -1971,6 +1984,82 @@ int edid_state::parse_eld_file(const std::string &fname)
 
 	printf("\n%s conformity: %s\n",
 	       state.data_block.empty() ? "ELD" : state.data_block.c_str(),
+	       failures ? "FAIL" : "PASS");
+	return failures ? -2 : 0;
+}
+
+static int hdcp_from_file(parse_data &pdata, const char *from_file)
+{
+	int ret = data_from_file(pdata, from_file);
+
+	if (ret < 0)
+		return ret;
+
+	unsigned char *hdcp_prim = &pdata.buf[0];
+	unsigned char *ksv_fifo = hdcp_prim + 256;
+	unsigned char *hdcp_sec = ksv_fifo + 128 * 5;
+	unsigned kvs_fifo_sz = hdcp_prim[0x41] & 0x7f;
+	memcpy(hdcp_sec, ksv_fifo + kvs_fifo_sz * 5, 256);
+	memset(ksv_fifo + kvs_fifo_sz * 5, 0, (128 - kvs_fifo_sz) * 5);
+	return 0;
+}
+
+int edid_state::parse_hdcp_pdata(parse_data &pdata)
+{
+	state.block_nr = 0;
+	state.data_block.clear();
+
+	if (!options[OptSkipHexDump]) {
+		printf("edid-decode %s (hex):\n\n", pdata.name);
+		// Primary HDCP data
+		hex_block("", pdata.buf, 128, false);
+		printf("\n");
+		hex_block("", pdata.buf + 128, 128, false);
+		printf("\n");
+		// KSV FIFO
+		for (unsigned i = 0; i < (pdata.buf[0x41] & 0x7f); i++) {
+			hex_block("", pdata.buf + 256 + i * 5, 5, false);
+			printf("\n");
+		}
+		// Secondary HDCP data if present
+		if (!memchk(pdata.buf + 256 + 128 * 5, 256)) {
+			hex_block("", pdata.buf + 256 + 128 * 5, 128, false);
+			printf("\n");
+			hex_block("", pdata.buf + 256 + 128 * 5 + 128, 128, false);
+			printf("\n");
+		}
+		if (options[OptOnlyHexDump])
+			return 0;
+		printf("----------------\n\n");
+	}
+
+	if (pdata.buf_size < 128) {
+		fail("%s is too small to parse.\n", pdata.name);
+		return -1;
+	}
+
+	parse_hdcp(pdata.buf, pdata.buf_size);
+
+	if (!options[OptCheck] && !options[OptCheckInline])
+		return 0;
+
+	printf("\n----------------\n");
+
+	if (!options[OptSkipSHA] && strlen(STRING(SHA))) {
+		options[OptSkipSHA] = 1;
+		printf("\n");
+		print_version();
+	}
+
+	if (options[OptCheck]) {
+		if (warnings)
+			show_data_msgs(pdata.name, true);
+		if (failures)
+			show_data_msgs(pdata.name, false);
+	}
+
+	printf("\n%s conformity: %s\n",
+	       state.data_block.empty() ? pdata.name : state.data_block.c_str(),
 	       failures ? "FAIL" : "PASS");
 	return failures ? -2 : 0;
 }
@@ -2530,6 +2619,7 @@ int main(int argc, char **argv)
 	double hdcp_ri_sleep = 0;
 	std::vector<std::string> if_names;
 	std::vector<std::string> eld_names;
+	std::string hdcp_name;
 	unsigned test_rel_duration = 0;
 	unsigned test_rel_msleep = 50;
 	unsigned idx = 0;
@@ -2683,6 +2773,9 @@ int main(int argc, char **argv)
 		case OptInfoFrame:
 			if_names.push_back(optarg);
 			break;
+		case OptHDCP:
+			hdcp_name = optarg;
+			break;
 		case OptEld:
 			eld_names.push_back(optarg);
 			break;
@@ -2740,13 +2833,14 @@ int main(int argc, char **argv)
 				ret = 0;
 			}
 		} else if (adapter_fd >= 0) {
-			if (options[OptI2CHDCP])
-				ret = state.read_hdcp(adapter_fd);
-			if (options[OptI2CHDCPRi])
+			if (!ret && options[OptI2CHDCP])
+				ret = read_hdcp(adapter_fd, hdcp_pdata);
+			if (!ret && options[OptI2CHDCPRi])
 				ret = read_hdcp_ri(adapter_fd, hdcp_ri_sleep);
 			if (options[OptI2CTestReliability])
 				ret = test_reliability(adapter_fd, test_rel_duration, test_rel_msleep);
-		} else if ((options[OptInfoFrame] || options[OptEld]) && !options[OptGTF]) {
+		} else if ((options[OptInfoFrame] || options[OptEld] ||
+			    options[OptHDCP]) && !options[OptGTF]) {
 			ret = 0;
 		} else {
 			ret = edid_from_file("-", stdout);
@@ -2794,6 +2888,26 @@ int main(int argc, char **argv)
 		ret = state.parse_edid();
 
 	bool show_line = state.edid_size;
+
+	if (hdcp_name.length()) {
+		int r = hdcp_from_file(hdcp_pdata, hdcp_name.c_str());
+		if (r && !ret)
+			ret = r;
+	}
+	if (hdcp_pdata.buf_size) {
+		if (show_line)
+			printf("\n================\n\n");
+		show_line = true;
+
+		state.warnings = state.failures = 0;
+		for (unsigned i = 0; i < EDID_MAX_BLOCKS + 1; i++) {
+			s_msgs[i][0].clear();
+			s_msgs[i][1].clear();
+		}
+		int r = state.parse_hdcp_pdata(hdcp_pdata);
+		if (r && !ret)
+			ret = r;
+	}
 
 	for (const auto &n : if_names) {
 		if (show_line)

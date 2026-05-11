@@ -9,22 +9,12 @@
 
 #include "edid-decode.h"
 
-void edid_state::parse_hdcp_data(const unsigned char hdcp_prim[256],
-				 const unsigned char hdcp_sec[256],
-				 const unsigned char ksv_fifo[128 * 5])
+void edid_state::parse_hdcp(const unsigned char *hdcp, unsigned size)
 {
-	printf("HDCP Primary Link Hex Dump:\n\n");
-	hex_block("", hdcp_prim, 128, false);
-	printf("\n");
-	hex_block("", hdcp_prim + 128, 128, false);
-	printf("\n");
-	if (hdcp_sec[5] != 0xdd) {
-		printf("HDCP Secondary Link Hex Dump:\n\n");
-		hex_block("", hdcp_sec, 128, false);
-		printf("\n");
-		hex_block("", hdcp_sec + 128, 128, false);
-		printf("\n");
-	}
+	const unsigned char *hdcp_prim = hdcp;
+	const unsigned char *ksv_fifo = hdcp + 256;
+	const unsigned char *hdcp_sec = hdcp + 256 + 128 * 5;
+
 	printf("HDCP Primary Link:\n\n");
 	printf("Bksv: %02x %02x %02x %02x %02x\n",
 	       hdcp_prim[0], hdcp_prim[1], hdcp_prim[2], hdcp_prim[3], hdcp_prim[4]);
@@ -89,7 +79,7 @@ void edid_state::parse_hdcp_data(const unsigned char hdcp_prim[256],
 	if (vv & 0x800)
 		printf("\tREAUTH_REQ\n");
 
-	if (hdcp_sec[5] == 0xdd)
+	if (memchk(hdcp_sec, 256))
 		return;
 
 	printf("HDCP Secondary Link:\n\n");

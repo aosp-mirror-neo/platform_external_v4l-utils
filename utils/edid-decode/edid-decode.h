@@ -565,10 +565,8 @@ struct edid_state {
 	int parse_eld_file(const std::string &fname);
 	void parse_eld_baseline(const unsigned char *x, unsigned size);
 
-	int read_hdcp(int adapter_fd);
-	void parse_hdcp_data(const unsigned char hdcp_prim[256],
-			     const unsigned char hdcp_sec[256],
-			     const unsigned char ksv_fifo[128 * 5]);
+	int parse_hdcp_pdata(parse_data &pdata);
+	void parse_hdcp(const unsigned char *hdcp, unsigned size);
 };
 
 static inline void add_str(std::string &s, const std::string &add)
@@ -657,7 +655,7 @@ char *extract_string(const unsigned char *x, unsigned len, bool is_cp437);
 int request_i2c_adapter(const char *device);
 int read_edid(int adapter_fd, unsigned char *edid, bool silent = false);
 int test_reliability(int adapter_fd, unsigned secs, unsigned msleep);
-int read_hdcp(int adapter_fd);
+int read_hdcp(int adapter_fd, parse_data &pdata);
 int read_hdcp_ri(int adapter_fd, double ri_time);
 
 #else

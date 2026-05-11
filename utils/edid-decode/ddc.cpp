@@ -41,9 +41,6 @@
 #define EDID_ADDR 0x50
 #define SEGMENT_POINTER_ADDR 0x30
 
-// i2c address for SCDC
-#define SCDC_ADDR 0x54
-
 // i2c addresses for HDCP
 #define HDCP_PRIM_ADDR 0x3a
 #define HDCP_SEC_ADDR 0x3b
@@ -285,8 +282,7 @@ static int read_hdcp_registers(int adapter_fd, __u8 *hdcp_prim, __u8 *hdcp_sec, 
 		msgs[1].buf = hdcp_prim + 129;
 		err = ioctl(adapter_fd, I2C_RDWR, &data);
 	}
-
-	if (err < 0) {
+	if (err != 2) {
 		fprintf(stderr, "Unable to read Primary Link HDCP: %s\n",
 			strerror(errno));
 		return -1;
@@ -310,7 +306,7 @@ static int read_hdcp_registers(int adapter_fd, __u8 *hdcp_prim, __u8 *hdcp_sec, 
 		data.msgs = ksv_fifo_msgs;
 		data.nmsgs = ARRAY_SIZE(msgs);
 		err = ioctl(adapter_fd, I2C_RDWR, &data);
-		if (err < 0) {
+		if (err != 2) {
 			fprintf(stderr, "Unable to read KSV FIFO: %s\n",
 				strerror(errno));
 			return -1;
@@ -344,17 +340,15 @@ static int read_hdcp_registers(int adapter_fd, __u8 *hdcp_prim, __u8 *hdcp_sec, 
 	return 0;
 }
 
-int edid_state::read_hdcp(int adapter_fd)
+int read_hdcp(int adapter_fd, parse_data &pdata)
 {
-	__u8 hdcp_prim[256] = {};
-	__u8 hdcp_sec[256] = {};
-	__u8 ksv_fifo[128 * 5] = {};
+	__u8 *hdcp_prim = &pdata.buf[0];
+	__u8 *ksv_fifo = hdcp_prim + 256;
+	__u8 *hdcp_sec = ksv_fifo + 128 * 5;
 
-	hdcp_prim[5] = 0xdd;
-	hdcp_sec[5] = 0xdd;
 	if (read_hdcp_registers(adapter_fd, hdcp_prim, hdcp_sec, ksv_fifo))
 		return -1;
-	parse_hdcp_data(hdcp_prim, hdcp_sec, ksv_fifo);
+	pdata.buf_size = pdata.buf_max_size;
 	return 0;
 }
 
