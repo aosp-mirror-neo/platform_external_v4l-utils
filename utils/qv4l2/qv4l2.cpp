@@ -1670,9 +1670,10 @@ void SaveDialog::selected(const QString &s)
 {
 	if (!s.isEmpty()) {
 		QFile file(s);
-		file.open(QIODevice::WriteOnly | QIODevice::Truncate);
-		file.write((const char *)m_buf, m_size);
-		file.close();
+		if (file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+			file.write((const char *)m_buf, m_size);
+			file.close();
+		}
 	}
 	delete [] m_buf;
 }
@@ -1712,8 +1713,8 @@ void ApplicationWindow::openRawFile(const QString &s)
 	if (m_saveRaw.openMode())
 		m_saveRaw.close();
 	m_saveRaw.setFileName(s);
-	m_saveRaw.open(QIODevice::WriteOnly | QIODevice::Truncate);
-	m_saveRawAct->setChecked(true);
+	if (m_saveRaw.open(QIODevice::WriteOnly | QIODevice::Truncate))
+		m_saveRawAct->setChecked(true);
 }
 
 void ApplicationWindow::saveRaw(bool checked)
