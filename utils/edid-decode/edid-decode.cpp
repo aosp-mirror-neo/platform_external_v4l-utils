@@ -2866,7 +2866,7 @@ int main(int argc, char **argv)
 			}
 		} else if (adapter_fd >= 0) {
 			if (options[OptI2CHDCP])
-				ret = read_hdcp(adapter_fd);
+				ret = state.read_hdcp(adapter_fd);
 			if (options[OptI2CHDCPRi])
 				ret = read_hdcp_ri(adapter_fd, hdcp_ri_sleep);
 			if (options[OptI2CTestReliability])

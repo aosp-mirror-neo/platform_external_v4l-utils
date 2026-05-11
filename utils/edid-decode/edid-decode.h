@@ -557,6 +557,11 @@ struct edid_state {
 
 	int parse_eld(const std::string &fname);
 	void parse_eld_baseline(const unsigned char *x, unsigned size);
+
+	int read_hdcp(int adapter_fd);
+	void parse_hdcp_data(const unsigned char hdcp_prim[256],
+			     const unsigned char hdcp_sec[256],
+			     const unsigned char ksv_fifo[128 * 5]);
 };
 
 static inline void add_str(std::string &s, const std::string &add)
