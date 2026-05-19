@@ -34,6 +34,8 @@ void trace_v4l2_hevc_pred_weight_table_gen(void *ptr, json_object *parent_obj);
 void trace_v4l2_ctrl_hevc_slice_params_gen(void *ptr, json_object *parent_obj);
 void trace_v4l2_ctrl_hevc_decode_params_gen(void *ptr, json_object *parent_obj);
 void trace_v4l2_ctrl_hevc_scaling_matrix_gen(void *ptr, json_object *parent_obj);
+void trace_v4l2_ctrl_hevc_ext_sps_st_rps_gen(void *ptr, json_object *parent_obj);
+void trace_v4l2_ctrl_hevc_ext_sps_lt_rps_gen(void *ptr, json_object *parent_obj);
 void trace_v4l2_vp9_loop_filter_gen(void *ptr, json_object *parent_obj);
 void trace_v4l2_vp9_quantization_gen(void *ptr, json_object *parent_obj);
 void trace_v4l2_vp9_segmentation_gen(void *ptr, json_object *parent_obj);

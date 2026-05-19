@@ -34,6 +34,8 @@ struct v4l2_hevc_pred_weight_table *retrace_v4l2_hevc_pred_weight_table_gen(json
 struct v4l2_ctrl_hevc_slice_params *retrace_v4l2_ctrl_hevc_slice_params_gen(json_object *ctrl_obj);
 struct v4l2_ctrl_hevc_decode_params *retrace_v4l2_ctrl_hevc_decode_params_gen(json_object *ctrl_obj);
 struct v4l2_ctrl_hevc_scaling_matrix *retrace_v4l2_ctrl_hevc_scaling_matrix_gen(json_object *ctrl_obj);
+struct v4l2_ctrl_hevc_ext_sps_st_rps *retrace_v4l2_ctrl_hevc_ext_sps_st_rps_gen(json_object *ctrl_obj);
+struct v4l2_ctrl_hevc_ext_sps_lt_rps *retrace_v4l2_ctrl_hevc_ext_sps_lt_rps_gen(json_object *ctrl_obj);
 struct v4l2_vp9_loop_filter *retrace_v4l2_vp9_loop_filter_gen(json_object *ctrl_obj);
 struct v4l2_vp9_quantization *retrace_v4l2_vp9_quantization_gen(json_object *ctrl_obj);
 struct v4l2_vp9_segmentation *retrace_v4l2_vp9_segmentation_gen(json_object *ctrl_obj);

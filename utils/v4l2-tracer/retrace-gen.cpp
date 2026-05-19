@@ -1606,6 +1606,84 @@ struct v4l2_ctrl_hevc_scaling_matrix *retrace_v4l2_ctrl_hevc_scaling_matrix_gen(
 	return p;
 }
 
+struct v4l2_ctrl_hevc_ext_sps_st_rps *retrace_v4l2_ctrl_hevc_ext_sps_st_rps_gen(json_object *ctrl_obj)
+{
+	struct v4l2_ctrl_hevc_ext_sps_st_rps *p = (struct v4l2_ctrl_hevc_ext_sps_st_rps *) calloc(1, sizeof(v4l2_ctrl_hevc_ext_sps_st_rps));
+	json_object *v4l2_ctrl_hevc_ext_sps_st_rps_obj;
+	if (!json_object_object_get_ex(ctrl_obj, "v4l2_ctrl_hevc_ext_sps_st_rps", &v4l2_ctrl_hevc_ext_sps_st_rps_obj))
+		v4l2_ctrl_hevc_ext_sps_st_rps_obj = ctrl_obj;
+
+	json_object *delta_idx_minus1_obj;
+	if (json_object_object_get_ex(v4l2_ctrl_hevc_ext_sps_st_rps_obj, "delta_idx_minus1", &delta_idx_minus1_obj))
+		p->delta_idx_minus1 = (__u8) json_object_get_int(delta_idx_minus1_obj);
+
+	json_object *delta_rps_sign_obj;
+	if (json_object_object_get_ex(v4l2_ctrl_hevc_ext_sps_st_rps_obj, "delta_rps_sign", &delta_rps_sign_obj))
+		p->delta_rps_sign = (__u8) json_object_get_int(delta_rps_sign_obj);
+
+	json_object *num_negative_pics_obj;
+	if (json_object_object_get_ex(v4l2_ctrl_hevc_ext_sps_st_rps_obj, "num_negative_pics", &num_negative_pics_obj))
+		p->num_negative_pics = (__u8) json_object_get_int(num_negative_pics_obj);
+
+	json_object *num_positive_pics_obj;
+	if (json_object_object_get_ex(v4l2_ctrl_hevc_ext_sps_st_rps_obj, "num_positive_pics", &num_positive_pics_obj))
+		p->num_positive_pics = (__u8) json_object_get_int(num_positive_pics_obj);
+
+	json_object *used_by_curr_pic_obj;
+	if (json_object_object_get_ex(v4l2_ctrl_hevc_ext_sps_st_rps_obj, "used_by_curr_pic", &used_by_curr_pic_obj))
+		p->used_by_curr_pic = (__u32) json_object_get_int64(used_by_curr_pic_obj);
+
+	json_object *use_delta_flag_obj;
+	if (json_object_object_get_ex(v4l2_ctrl_hevc_ext_sps_st_rps_obj, "use_delta_flag", &use_delta_flag_obj))
+		p->use_delta_flag = (__u32) json_object_get_int64(use_delta_flag_obj);
+
+	json_object *abs_delta_rps_minus1_obj;
+	if (json_object_object_get_ex(v4l2_ctrl_hevc_ext_sps_st_rps_obj, "abs_delta_rps_minus1", &abs_delta_rps_minus1_obj))
+		p->abs_delta_rps_minus1 = (__u16) json_object_get_int(abs_delta_rps_minus1_obj);
+
+	/* __u16	delta_poc_s0_minus1[16] */
+	json_object *delta_poc_s0_minus1_obj;
+	if (json_object_object_get_ex(v4l2_ctrl_hevc_ext_sps_st_rps_obj, "delta_poc_s0_minus1", &delta_poc_s0_minus1_obj)) {
+		for (size_t i = 0; i < 16; i++) {
+			if (json_object_array_get_idx(delta_poc_s0_minus1_obj, i))
+				p->delta_poc_s0_minus1[i] = (__u16) json_object_get_int(json_object_array_get_idx(delta_poc_s0_minus1_obj, i));
+		}
+	}
+
+	/* __u16	delta_poc_s1_minus1[16] */
+	json_object *delta_poc_s1_minus1_obj;
+	if (json_object_object_get_ex(v4l2_ctrl_hevc_ext_sps_st_rps_obj, "delta_poc_s1_minus1", &delta_poc_s1_minus1_obj)) {
+		for (size_t i = 0; i < 16; i++) {
+			if (json_object_array_get_idx(delta_poc_s1_minus1_obj, i))
+				p->delta_poc_s1_minus1[i] = (__u16) json_object_get_int(json_object_array_get_idx(delta_poc_s1_minus1_obj, i));
+		}
+	}
+
+	json_object *flags_obj;
+	if (json_object_object_get_ex(v4l2_ctrl_hevc_ext_sps_st_rps_obj, "flags", &flags_obj))
+		p->flags = (__u16) s2flags(json_object_get_string(flags_obj), v4l2_hevc_ext_sps_st_rps_flag_def);
+
+	return p;
+}
+
+struct v4l2_ctrl_hevc_ext_sps_lt_rps *retrace_v4l2_ctrl_hevc_ext_sps_lt_rps_gen(json_object *ctrl_obj)
+{
+	struct v4l2_ctrl_hevc_ext_sps_lt_rps *p = (struct v4l2_ctrl_hevc_ext_sps_lt_rps *) calloc(1, sizeof(v4l2_ctrl_hevc_ext_sps_lt_rps));
+	json_object *v4l2_ctrl_hevc_ext_sps_lt_rps_obj;
+	if (!json_object_object_get_ex(ctrl_obj, "v4l2_ctrl_hevc_ext_sps_lt_rps", &v4l2_ctrl_hevc_ext_sps_lt_rps_obj))
+		v4l2_ctrl_hevc_ext_sps_lt_rps_obj = ctrl_obj;
+
+	json_object *lt_ref_pic_poc_lsb_sps_obj;
+	if (json_object_object_get_ex(v4l2_ctrl_hevc_ext_sps_lt_rps_obj, "lt_ref_pic_poc_lsb_sps", &lt_ref_pic_poc_lsb_sps_obj))
+		p->lt_ref_pic_poc_lsb_sps = (__u16) json_object_get_int(lt_ref_pic_poc_lsb_sps_obj);
+
+	json_object *flags_obj;
+	if (json_object_object_get_ex(v4l2_ctrl_hevc_ext_sps_lt_rps_obj, "flags", &flags_obj))
+		p->flags = (__u16) s2flags(json_object_get_string(flags_obj), v4l2_hevc_ext_sps_lt_rps_flag_def);
+
+	return p;
+}
+
 struct v4l2_vp9_loop_filter *retrace_v4l2_vp9_loop_filter_gen(json_object *ctrl_obj)
 {
 	struct v4l2_vp9_loop_filter *p = (struct v4l2_vp9_loop_filter *) calloc(1, sizeof(v4l2_vp9_loop_filter));

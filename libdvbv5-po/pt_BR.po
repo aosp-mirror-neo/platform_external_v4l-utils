@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: libdvbv5 1.7.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-01-05 11:53+0100\n"
+"POT-Creation-Date: 2026-05-19 21:07+0200\n"
 "PO-Revision-Date: 2017-05-06 23:13-0300\n"
 "Last-Translator: Mauro Carvalho Chehab <mchehab@kernel.org>\n"
 "Language-Team: Brazilian Portuguese\n"
@@ -308,8 +308,8 @@ msgstr "Não é possível adicionar propriedade %s\n"
 msgid "Can't add property %d\n"
 msgstr "Não é possível adicionar propriedade %s\n"
 
-#: lib/libdvbv5/dvb-file.c:243 lib/libdvbv5/dvb-file.c:756
-#: lib/libdvbv5/dvb-file.c:1343
+#: lib/libdvbv5/dvb-file.c:243 lib/libdvbv5/dvb-file.c:794
+#: lib/libdvbv5/dvb-file.c:1381
 msgid "Allocating memory for dvb_file"
 msgstr "Alocação de memória para dvb_file"
 
@@ -338,7 +338,7 @@ msgstr "parâmetro%i (%s) faltando"
 msgid "parameter %s invalid: %s"
 msgstr "parâmetro %s inválido: %s"
 
-#: lib/libdvbv5/dvb-file.c:385 lib/libdvbv5/dvb-file.c:841
+#: lib/libdvbv5/dvb-file.c:385 lib/libdvbv5/dvb-file.c:879
 #, c-format
 msgid "ERROR %s while parsing line %d of %s\n"
 msgstr "ERROR %s ao analisar linha %d de %s\n"
@@ -348,170 +348,175 @@ msgstr "ERROR %s ao analisar linha %d de %s\n"
 msgid "delivery system %d not supported on this format"
 msgstr "sistema de TV digital %d não suportado neste formato"
 
-#: lib/libdvbv5/dvb-file.c:508 lib/libdvbv5/dvb-vdr-format.c:345
-#, c-format
-msgid "value not supported"
-msgstr "valor não suportado"
+#: lib/libdvbv5/dvb-file.c:517
+#, fuzzy, c-format
+msgid "%s doesn't support %s on this format"
+msgstr "sistema de TV digital %d não suportado neste formato"
 
-#: lib/libdvbv5/dvb-file.c:518
+#: lib/libdvbv5/dvb-file.c:544
+#, fuzzy, c-format
+msgid "WARNING: %s while parsing entry %d of %s\n"
+msgstr "ERRO: %s ao analisar a entrada %d de %s\n"
+
+#: lib/libdvbv5/dvb-file.c:556
 #, c-format
 msgid "WARNING: missing video PID while parsing entry %d of %s\n"
 msgstr "AVISO: falta de vídeo PID ao analisar a entrada %d de %s\n"
 
-#: lib/libdvbv5/dvb-file.c:528
+#: lib/libdvbv5/dvb-file.c:566
 #, c-format
 msgid "WARNING: missing audio PID while parsing entry %d of %s\n"
 msgstr "AVISO: falta de áudio PID ao analisar a entrada %d de %s\n"
 
-#: lib/libdvbv5/dvb-file.c:547
+#: lib/libdvbv5/dvb-file.c:585
 #, c-format
 msgid "property %s not supported while parsing entry %d of %s\n"
 msgstr "propriedade %s não é suportada durante a análise de entrada %d de %s\n"
 
-#: lib/libdvbv5/dvb-file.c:568 lib/libdvbv5/dvb-vdr-format.c:438
+#: lib/libdvbv5/dvb-file.c:606 lib/libdvbv5/dvb-vdr-format.c:438
 #, c-format
 msgid "ERROR: %s while parsing entry %d of %s\n"
 msgstr "ERRO: %s ao analisar a entrada %d de %s\n"
 
-#: lib/libdvbv5/dvb-file.c:792
+#: lib/libdvbv5/dvb-file.c:830
 #, c-format
 msgid "Missing channel group"
 msgstr "Faltando grupo de canais"
 
-#: lib/libdvbv5/dvb-file.c:805
+#: lib/libdvbv5/dvb-file.c:843
 #, c-format
 msgid "key/value without a channel group"
 msgstr "chave/valor sem grupo de canais"
 
-#: lib/libdvbv5/dvb-file.c:810
+#: lib/libdvbv5/dvb-file.c:848
 #, c-format
 msgid "missing key"
 msgstr "falta chave"
 
-#: lib/libdvbv5/dvb-file.c:819
+#: lib/libdvbv5/dvb-file.c:857
 #, c-format
 msgid "missing value"
 msgstr "falta valor"
 
-#: lib/libdvbv5/dvb-file.c:827
+#: lib/libdvbv5/dvb-file.c:865
 #, c-format
 msgid "value %s is invalid for %s"
 msgstr "valor %s é inválido para %s"
 
-#: lib/libdvbv5/dvb-file.c:1222
+#: lib/libdvbv5/dvb-file.c:1260
 #, c-format
 msgid "Channel %s (service ID %d) not found on PMT. Skipping it."
 msgstr "Canal %s (serviço de ID %d) não foi encontrado na PMT. Ignorando."
 
-#: lib/libdvbv5/dvb-file.c:1240
+#: lib/libdvbv5/dvb-file.c:1278
 msgid "Not enough memory"
 msgstr "Memória insuficiente"
 
-#: lib/libdvbv5/dvb-file.c:1271
+#: lib/libdvbv5/dvb-file.c:1309
 msgid "Couldn't get frontend props"
 msgstr "Não foi possível obter propriedades do frontend"
 
-#: lib/libdvbv5/dvb-file.c:1300
+#: lib/libdvbv5/dvb-file.c:1338
 #, c-format
 msgid "Storing Service ID %d: '%s'"
 msgstr "Armazenando Serviço ID %d: '%s'"
 
-#: lib/libdvbv5/dvb-file.c:1315
+#: lib/libdvbv5/dvb-file.c:1353
 msgid "reserved"
 msgstr "reservado"
 
-#: lib/libdvbv5/dvb-file.c:1316
+#: lib/libdvbv5/dvb-file.c:1354
 msgid "digital television"
 msgstr "televisão digital"
 
-#: lib/libdvbv5/dvb-file.c:1317
+#: lib/libdvbv5/dvb-file.c:1355
 msgid "digital radio"
 msgstr "rádio digital"
 
-#: lib/libdvbv5/dvb-file.c:1318
+#: lib/libdvbv5/dvb-file.c:1356
 msgid "Teletext"
 msgstr "Teletexto"
 
-#: lib/libdvbv5/dvb-file.c:1319
+#: lib/libdvbv5/dvb-file.c:1357
 msgid "NVOD reference"
 msgstr "NVOD referência"
 
-#: lib/libdvbv5/dvb-file.c:1320
+#: lib/libdvbv5/dvb-file.c:1358
 msgid "NVOD time-shifted"
 msgstr "NVOD com time-shift"
 
-#: lib/libdvbv5/dvb-file.c:1321
+#: lib/libdvbv5/dvb-file.c:1359
 msgid "mosaic"
 msgstr "mosaico"
 
-#: lib/libdvbv5/dvb-file.c:1322
+#: lib/libdvbv5/dvb-file.c:1360
 msgid "PAL coded signal"
 msgstr "Sinal codificado PAL"
 
-#: lib/libdvbv5/dvb-file.c:1323
+#: lib/libdvbv5/dvb-file.c:1361
 msgid "SECAM coded signal"
 msgstr "Sinal codificado SECAM"
 
-#: lib/libdvbv5/dvb-file.c:1324
+#: lib/libdvbv5/dvb-file.c:1362
 msgid "D/D2-MAC"
 msgstr "D/D2-MAC"
 
-#: lib/libdvbv5/dvb-file.c:1325
+#: lib/libdvbv5/dvb-file.c:1363
 msgid "FM Radio"
 msgstr "Rádio FM"
 
-#: lib/libdvbv5/dvb-file.c:1326
+#: lib/libdvbv5/dvb-file.c:1364
 msgid "NTSC coded signal"
 msgstr "Sinal codificado NTSC"
 
-#: lib/libdvbv5/dvb-file.c:1327
+#: lib/libdvbv5/dvb-file.c:1365
 msgid "data broadcast"
 msgstr "transmissão de dados"
 
-#: lib/libdvbv5/dvb-file.c:1328
+#: lib/libdvbv5/dvb-file.c:1366
 msgid "user defined"
 msgstr "definido pelo usuário"
 
-#: lib/libdvbv5/dvb-file.c:1367
+#: lib/libdvbv5/dvb-file.c:1405
 #, c-format
 msgid "Virtual channel %s, name = %s"
 msgstr "Canal virtual %s, nome = %s"
 
-#: lib/libdvbv5/dvb-file.c:1396
+#: lib/libdvbv5/dvb-file.c:1434
 #, c-format
 msgid "Service %s, provider %s: %s"
 msgstr "Serviço %s, prestador %s: %s"
 
-#: lib/libdvbv5/dvb-file.c:1409
+#: lib/libdvbv5/dvb-file.c:1447
 #, c-format
 msgid "Storing as channel %s"
 msgstr "Armazenar como canal %s"
 
-#: lib/libdvbv5/dvb-file.c:1452
+#: lib/libdvbv5/dvb-file.c:1490
 msgid "WARNING: no SDT table - storing channel(s) without their names"
 msgstr "AVISO: nenhuma tabela SDT - armazenando canal(s), sem os seus nomes"
 
-#: lib/libdvbv5/dvb-file.c:1454
+#: lib/libdvbv5/dvb-file.c:1492
 msgid "WARNING: Some Service IDs are not at the SDT table"
 msgstr "AVISO: Alguns identificadores de serviço não estão na tabela SDT"
 
-#: lib/libdvbv5/dvb-file.c:1483
+#: lib/libdvbv5/dvb-file.c:1521
 #, c-format
 msgid "File format %s is unknown\n"
 msgstr "Formato de arquivo %s é desconhecido\n"
 
-#: lib/libdvbv5/dvb-file.c:1528
+#: lib/libdvbv5/dvb-file.c:1566
 #, c-format
 msgid "ERROR: Delivery system %s is not known. Valid values are:\n"
 msgstr ""
 "ERRO: sistema de TV digital %s não é conhecido. Os valores válidos são:\n"
 
-#: lib/libdvbv5/dvb-file.c:1572
+#: lib/libdvbv5/dvb-file.c:1610
 #, c-format
 msgid "Currently, VDR format is supported only for output\n"
 msgstr "Atualmente, o formato VDR é suportado apenas para a saída\n"
 
-#: lib/libdvbv5/dvb-file.c:1575
+#: lib/libdvbv5/dvb-file.c:1613
 #, c-format
 msgid "Format is not supported\n"
 msgstr "Formato não é suportado\n"
@@ -815,6 +820,11 @@ msgstr "AVISO: entrada %d: nome do canal não foi encontrado. Pulando entrada\n"
 #, c-format
 msgid "WARNING: entry %d: frequency not found. skipping entry\n"
 msgstr "AVISO: entrada %d: a frequência não encontrado. pulando entrada\n"
+
+#: lib/libdvbv5/dvb-vdr-format.c:345
+#, c-format
+msgid "value not supported"
+msgstr "valor não suportado"
 
 #: lib/libdvbv5/dvb-vdr-format.c:387
 #, c-format
