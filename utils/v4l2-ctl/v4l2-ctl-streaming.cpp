@@ -303,7 +303,8 @@ void streaming_usage()
 	       "                     skip the first <count> buffers. The default is 0.\n"
 	       "  --stream-sleep count=<c>,sleep=<ms>,mode=<mode>\n"
 	       "                     Sleep for <ms> milliseconds (default=1000) after <c> buffers.\n"
-	       "                     If <c> is 0, then only sleep right after streaming starts.\n"
+	       "                     If <c> is 0, then only sleep right before (mode >= 2) or\n"
+	       "                     after (mode < 2) streaming starts.\n"
 	       "                     If <ms> is 0, then sleep forever (modes 0 and 1) or not at all\n"
 	       "                     (for modes 2 and 3), if <ms> is positive, then sleep for <ms>\n"
 	       "                     milliseconds, if <ms> is negative, then sleep for a random\n"
@@ -1936,13 +1937,16 @@ restart:
 
 	fps_ts.determine_field(fd.g_fd(), q.g_type());
 
+	if (stream_sleep_count == 0 && (stream_sleep_mode & 2))
+		do_sleep();
+
 	if (fd.streamon())
 		goto done;
 
 	fd.s_trace(0);
 	exp_fd.s_trace(0);
 
-	if (stream_sleep_count == 0)
+	if (stream_sleep_count == 0 && !(stream_sleep_mode & 2))
 		do_sleep();
 
 	if (use_poll)
@@ -2220,13 +2224,16 @@ restart:
 
 	fps_ts.determine_field(fd.g_fd(), type);
 
+	if (stream_sleep_count == 0 && (stream_sleep_mode & 2))
+		do_sleep();
+
 	if (fd.streamon())
 		goto done;
 
 	fd.s_trace(0);
 	exp_fd.s_trace(0);
 
-	if (stream_sleep_count == 0)
+	if (stream_sleep_count == 0 && !(stream_sleep_mode & 2))
 		do_sleep();
 
 	if (use_poll)
@@ -2394,6 +2401,9 @@ static void stateful_m2m(cv4l_fd &fd, cv4l_queue &in, cv4l_queue &out,
 		return;
 	}
 
+	if (stream_sleep_count == 0 && (stream_sleep_mode & 2))
+		do_sleep();
+
 	if (fd.streamon(out.g_type()))
 		return;
 
@@ -2408,7 +2418,7 @@ static void stateful_m2m(cv4l_fd &fd, cv4l_queue &in, cv4l_queue &out,
 	fps_ts[CAP].determine_field(fd.g_fd(), in.g_type());
 	fps_ts[OUT].determine_field(fd.g_fd(), out.g_type());
 
-	if (stream_sleep_count == 0)
+	if (stream_sleep_count == 0 && !(stream_sleep_mode & 2))
 		do_sleep();
 
 	fcntl(fd.g_fd(), F_SETFL, fd_flags | O_NONBLOCK);
@@ -2875,13 +2885,16 @@ static void streaming_set_cap2out(cv4l_fd &fd, cv4l_fd &out_fd)
 	fps_ts[CAP].determine_field(fd.g_fd(), in.g_type());
 	fps_ts[OUT].determine_field(out_fd.g_fd(), out.g_type());
 
+	if (stream_sleep_count == 0 && (stream_sleep_mode & 2))
+		do_sleep();
+
 	if (fd.streamon() || out_fd.streamon())
 		goto done;
 
 	fd.s_trace(0);
 	out_fd.s_trace(0);
 
-	if (stream_sleep_count == 0)
+	if (stream_sleep_count == 0 && !(stream_sleep_mode & 2))
 		do_sleep();
 
 	if (use_poll)
