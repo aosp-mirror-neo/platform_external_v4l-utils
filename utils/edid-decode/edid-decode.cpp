@@ -781,10 +781,18 @@ bool edid_state::print_timings(const char *prefix, const struct timings *t,
 			     t->hsize_mm, t->vsize_mm);
 		} else if (t->hratio && t->vratio) {
 			unsigned vsize = (t->hsize_mm * t->vratio) / t->hratio;
+			unsigned hsize = (t->vsize_mm * t->hratio) / t->vratio;
 
-			if (vsize < t->vsize_mm - 10 || vsize > t->vsize_mm + 10)
-				warn("Image size is %dx%d mm, but based on the picture AR it should be %dx%d mm.\n",
-				     t->hsize_mm, t->vsize_mm, t->hsize_mm, vsize);
+			if (vsize > t->vsize_mm + 10 && hsize < t->hsize_mm + 10) {
+
+				if (hsize < t->hsize_mm - 10 || hsize > t->hsize_mm + 10)
+					warn("Image size is %dx%d mm, but based on the picture AR it should be %dx%d mm.\n",
+					     t->hsize_mm, t->vsize_mm, hsize, t->vsize_mm);
+			} else {
+				if (vsize < t->vsize_mm - 10 || vsize > t->vsize_mm + 10)
+					warn("Image size is %dx%d mm, but based on the picture AR it should be %dx%d mm.\n",
+					     t->hsize_mm, t->vsize_mm, t->hsize_mm, vsize);
+			}
 		}
 	}
 	return ok;
