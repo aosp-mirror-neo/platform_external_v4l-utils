@@ -1523,8 +1523,15 @@ void edid_state::print_native_res()
 				warn("No image size was specified, but it is calculated as %.1fx%.1fmm.\n",
 				     w / 10.0, h / 10.0);
 			}
+			/*
+			 * The Base Block is limited to values <= 255 cm. For displays that are
+			 * larger, use the NVRDB to correctly report the size. It is possible to
+			 * use the HDMI VSDB as well (Image_Size bit), but that's not generally
+			 * used and it also forces the dimensions to a multiple of 5 cm, which is
+			 * quite crude.
+			 */
 			if (has_cta && !cta.nvrdb_has_size && (w > 25500 || h > 25500))
-				warn("Calculated image width or height > 255 cm, recommend including an NVRDB with image size.\n");
+				fail("Calculated image width or height > 255 cm, but there is no NVRDB with image size.\n");
 		}
 	}
 
