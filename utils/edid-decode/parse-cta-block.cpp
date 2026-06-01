@@ -1090,20 +1090,31 @@ void edid_state::cta_hdmi_block(const unsigned char *x, unsigned length)
 		formats = true;
 		mask = true;
 	}
+
+	bool large_display = image_width >= 25600 || image_height >= 25600;
+
+	if (large_display && (x[b] & 0x18) != 0x08)
+		warn("Recommended to set Image_Size bits to 'Indicate Aspect Ratio' for large displays\n");
+
 	switch (x[b] & 0x18) {
-	case 0x00: break;
+	case 0x00:
+		break;
 	case 0x08:
-		   printf("      Base EDID image size is aspect ratio\n");
-		   break;
+		printf("      Base EDID image size indicates aspect ratio\n");
+		if (!large_display)
+			warn("'Indicates Aspect Ratio' is used for a small display (<= 255 cm), it is better to fill in the actual size\n");
+		break;
 	case 0x10:
-		   printf("      Base EDID image size is in units of 1 cm\n");
-		   break;
+		printf("      Base EDID image size is in units of 1 cm\n");
+		break;
 	case 0x18:
-		   printf("      Base EDID image size is in units of 5 cm\n");
-		   if (base.max_display_width_mm < 2550 &&
-		       base.max_display_height_mm < 2550)
-			   fail("5 cm units should not be used for displays smaller than 255x255 cm\n");
-		   break;
+		printf("      Base EDID image size is in units of 5 cm\n");
+		if (base.max_display_width_mm < 2550 &&
+		    base.max_display_height_mm < 2550)
+			fail("5 cm units should not be used for displays smaller than 255x255 cm\n");
+		else
+			warn("Using 5 cm units is not recommended. Specify the actual size with a CTA NVRDB or DisplayID Display Parameters\n");
+		break;
 	}
 	b++;
 	len_vic = (x[b] & 0xe0) >> 5;
