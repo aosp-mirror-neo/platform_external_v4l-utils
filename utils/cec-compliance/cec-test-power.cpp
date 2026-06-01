@@ -285,7 +285,9 @@ static bool poll_stable_power_status(struct node *node, unsigned me, unsigned la
 
 	/* Some devices can use several seconds to transition from one power
 	   state to another, so the power state must be repeatedly polled */
-	announce("Waiting for new stable power status. This may take up to %llu s.", (long long)long_timeout);
+	announce("Waiting for new stable power status '%s'. This may take up to %llu s.",
+		 power_status2s(expected_status),
+		 (long long)long_timeout);
 	while (time(nullptr) - t < long_timeout) {
 		__u8 power_status;
 

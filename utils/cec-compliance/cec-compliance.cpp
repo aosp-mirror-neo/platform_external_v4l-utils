@@ -635,7 +635,8 @@ retry:
 			fail("HPD was lost twice, that can't be right\n");
 			return false;
 		}
-		warn("HPD was lost, wait for it to come up again.\n");
+		warn("HPD was lost, wait for it to come up again and retry msg %s.\n",
+		     opcode2s(&original_msg).c_str());
 
 		if (!wait_for_hpd(node, !(node->caps & CEC_CAP_NEEDS_HPD) &&
 				  cec_msg_destination(msg) == CEC_LOG_ADDR_TV))
