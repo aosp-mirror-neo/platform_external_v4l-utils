@@ -766,14 +766,14 @@ bool edid_state::print_timings(const char *prefix, const struct timings *t,
 		/* this is valid */
 	} else if (cta.preparsed_image_size == hdmi_image_size_ratio) {
 		/* this is valid */
-	} else if (t->hsize_mm > base.max_display_width_mm + 9 ||
-		   t->vsize_mm > base.max_display_height_mm + 9) {
+	} else if (t->hsize_mm > image_width / 10.0 + 9 ||
+		   t->vsize_mm > image_height / 10.0 + 9) {
 		fail("Mismatch of image size %ux%u mm vs display size %ux%u mm.\n",
-		     t->hsize_mm, t->vsize_mm, base.max_display_width_mm, base.max_display_height_mm);
-	} else if (t->hsize_mm < base.max_display_width_mm - 9 &&
-		   t->vsize_mm < base.max_display_height_mm - 9) {
+		     t->hsize_mm, t->vsize_mm, (image_width + 5) / 10, (image_height + 5) / 10);
+	} else if (t->hsize_mm < image_width / 10.0 - 9 &&
+		   t->vsize_mm < image_height / 10.0 - 9) {
 		fail("Mismatch of image size %ux%u mm vs display size %ux%u mm.\n",
-		     t->hsize_mm, t->vsize_mm, base.max_display_width_mm, base.max_display_height_mm);
+		     t->hsize_mm, t->vsize_mm, (image_width + 5) / 10, (image_height + 5) / 10);
 	}
 	if (t->hsize_mm && t->vsize_mm) {
 		if (t->hsize_mm < 100 || t->vsize_mm < 100) {
@@ -784,7 +784,6 @@ bool edid_state::print_timings(const char *prefix, const struct timings *t,
 			unsigned hsize = (t->vsize_mm * t->hratio) / t->vratio;
 
 			if (vsize > t->vsize_mm + 10 && hsize < t->hsize_mm + 10) {
-
 				if (hsize < t->hsize_mm - 10 || hsize > t->hsize_mm + 10)
 					warn("Image size is %dx%d mm, but based on the picture AR it should be %dx%d mm.\n",
 					     t->hsize_mm, t->vsize_mm, hsize, t->vsize_mm);

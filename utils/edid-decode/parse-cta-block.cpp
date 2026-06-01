@@ -958,8 +958,6 @@ void edid_state::cta_nvrdb(const unsigned char *x, unsigned length)
 		h *= 10;
 	}
 	printf("    Image Size: %.1fx%.1f mm\n", w / 10.0, h / 10.0);
-	image_width = w;
-	image_height = h;
 	if (w <= 25500 && h <= 25500)
 		warn("Image Size should only be used for large displays with width and/or height > 255 cm\n");
 	cta.nvrdb_has_size = true;
@@ -3059,9 +3057,29 @@ void edid_state::preparse_cta_block(unsigned char *x)
 				cta.has_vfpdb = true;
 			else if (x[i + 1] == 0x05)
 				cta.has_cdb = true;
-			else if (x[i + 1] == 0x08)
+			else if (x[i + 1] == 0x08) {
 				cta.has_nvrdb = true;
-			else if (x[i + 1] == 0x21)
+				if ((x[i] & 0x1f) < 7 || !(x[i + 3] & 1))
+					continue;
+
+				unsigned w = (x[i + 5] << 8) | x[i + 4];
+				unsigned h = (x[i + 7] << 8) | x[i + 6];
+
+				if (!w || !h)
+					continue;
+
+				if (x[i + 3] & 0x80) {
+					w *= 10;
+					h *= 10;
+				}
+				cta.image_width = w;
+				cta.image_height = h;
+				if (cta.image_width > image_width ||
+				    cta.image_height > image_height) {
+					image_width = cta.image_width;
+					image_height = cta.image_height;
+				}
+			} else if (x[i + 1] == 0x21)
 				cta.has_pidb = true;
 			else if (x[i + 1] == 0x13 && (x[i + 2] & 0x40)) {
 				cta.preparsed_speaker_count = 1 + (x[i + 2] & 0x1f);
@@ -3321,6 +3339,13 @@ void edid_state::check_cta_blocks()
 	unsigned max_pref_ilace_vact = 0;
 
 	data_block = "CTA-861";
+
+	if (cta.image_width && cta.image_width < 25600 && cta.image_height < 25600 &&
+	    (abs((int)cta.image_width - (int)base.max_display_width_mm * 10) >= 100 ||
+	     abs((int)cta.image_height - (int)base.max_display_height_mm * 10) >= 100))
+		fail("Image size mismatch: NVRDB: %.1fx%.1fmm Base EDID: %u.0x%u.0mm.\n",
+		     cta.image_width / 10.0, cta.image_height / 10.0,
+		     base.max_display_width_mm, base.max_display_height_mm);
 
 	// HDMI 1.4 goes up to 340 MHz. Dubious to have a DTD above that,
 	// but no VICs. Displays often have a setting to turn off HDMI 2.x
