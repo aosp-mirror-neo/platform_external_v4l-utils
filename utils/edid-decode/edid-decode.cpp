@@ -148,8 +148,8 @@ static void usage(void)
 {
 	printf("Usage: edid-decode <options> [in [out]]\n"
 	       "  [in]                  EDID file to parse. Read from standard input if none given\n"
-	       "                        and neither --infoframe nor --eld was not used, or if the\n"
-	       "                        input filename is '-'.\n"
+	       "                        and neither --infoframe, --eld, --scdc nor --hdcp was used,\n"
+	       "                        or if the input filename is '-'.\n"
 	       "  [out]                 Output the read EDID to this file. Write to standard output\n"
 	       "                        if the output filename is '-'.\n"
 	       "\nOptions:\n"
