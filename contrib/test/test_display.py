@@ -394,19 +394,27 @@ def main(args):
                     cnt = cnt + 1
 
             if args.command == "cec-stress":
+                stress_args = args.args
+                if not "cnt=" in stress_args:
+                    stress_args = stress_args + ",cnt=10000"
                 command = (f"cec-ctl -d{device} -t0"
-                           f" --stress-test-standby-wakeup-cycle {args.args} -w")
+                           f" --stress-test-standby-wakeup-cycle {stress_args} -w")
                 execute_cmd(command, std_log)
             elif args.command == "cec-stress-sleep":
                 sleep_args = args.args
+                if not "cnt=" in sleep_args:
+                    sleep_args = sleep_args + ",cnt=10000"
                 if not "max-sleep=" in sleep_args:
                     sleep_args = sleep_args + ",max-sleep=5"
                 command = (f"cec-ctl -d{device} -t0"
                            f" --stress-test-standby-wakeup-cycle {sleep_args} -w")
                 execute_cmd(command, std_log)
             elif args.command == "cec-stress-random":
+                random_args = args.args
+                if not "cnt=" in random_args:
+                    random_args = random_args + ",cnt=4000"
                 command = (f"cec-ctl -d{device} -t0"
-                           f" --stress-test-random-standby-wakeup-cycle {args.args} -w")
+                           f" --stress-test-random-standby-wakeup-cycle {random_args} -w")
                 execute_cmd(command, std_log)
             elif args.command == "cec-compliance":
                 command = f"cec-compliance -S -w -d{device} -r {tests_to_run}"
