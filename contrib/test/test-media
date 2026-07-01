@@ -845,7 +845,7 @@ if [ $visl -eq 1 -a $setup -eq 0 ]; then
 	echo visl compliance tests | tee /dev/kmsg
 	echo
 	date
-	stdbuf -oL $v4l2_compliance -m platform:visl -P -s10 -a 2>&1 | tee -a $tmp
+	stdbuf -oL $v4l2_compliance -m platform:visl -z platform:vivid-002 -e vivid-002-vid-cap -P -s10 -a 2>&1 | tee -a $tmp
 	echo
 	echo unbind visl | tee /dev/kmsg
 	echo
