@@ -843,6 +843,7 @@ static void streamingSetup(struct node *node)
 		doioctl(node, VIDIOC_ENUMOUTPUT, &output);
 		node->cur_io_caps = output.capabilities;
 	}
+	setValidBufTypes(node);
 }
 
 static int parse_subopt(char **subs, const char * const *subopts, char **value)
@@ -1561,21 +1562,15 @@ void testNode(struct node &node, struct node &node_m2m_cap, struct node &expbuf_
 			printf("\ttest USERPTR (select): %s\n",
 			       ok(testUserPtr(&node, &node_m2m_cap, frame_count, POLL_MODE_SELECT)));
 			node.reopen();
-			if (options[OptSetExpBufDevice] ||
-			    !(node.valid_memorytype & (1 << V4L2_MEMORY_DMABUF))) {
-				if (!(node.codec_mask & (STATEFUL_ENCODER | STATEFUL_DECODER))) {
-					printf("\ttest DMABUF (no poll): %s\n",
-					       ok(testDmaBuf(&expbuf_node, &node, &node_m2m_cap,
-							     frame_count, POLL_MODE_NONE)));
-					node.reopen();
-				}
-				printf("\ttest DMABUF (select): %s\n",
-				       ok(testDmaBuf(&expbuf_node, &node, &node_m2m_cap, frame_count, POLL_MODE_SELECT)));
+			if (!(node.codec_mask & (STATEFUL_ENCODER | STATEFUL_DECODER))) {
+				printf("\ttest DMABUF (no poll): %s\n",
+				       ok(testDmaBuf(&expbuf_node, &node, &node_m2m_cap,
+						     frame_count, POLL_MODE_NONE)));
 				node.reopen();
-			} else if (!options[OptSetExpBufDevice]) {
-				printf("\ttest DMABUF: Cannot test, specify --expbuf-device\n");
 			}
-
+			printf("\ttest DMABUF (select): %s\n",
+			       ok(testDmaBuf(&expbuf_node, &node, &node_m2m_cap, frame_count, POLL_MODE_SELECT)));
+			node.reopen();
 			printf("\n");
 		}
 

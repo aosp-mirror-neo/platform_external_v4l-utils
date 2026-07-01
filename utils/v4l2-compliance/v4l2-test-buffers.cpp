@@ -647,6 +647,17 @@ int testRemoveBufs(struct node *node)
 	return 0;
 }
 
+static void setValidMemoryType(struct node *node, unsigned caps)
+{
+	node->valid_memorytype = 0;
+	if (caps & V4L2_BUF_CAP_SUPPORTS_MMAP)
+		node->valid_memorytype |= 1 << V4L2_MEMORY_MMAP;
+	if (caps & V4L2_BUF_CAP_SUPPORTS_USERPTR)
+		node->valid_memorytype |= 1 << V4L2_MEMORY_USERPTR;
+	if (caps & V4L2_BUF_CAP_SUPPORTS_DMABUF)
+		node->valid_memorytype |= 1 << V4L2_MEMORY_DMABUF;
+}
+
 int testReqBufs(struct node *node)
 {
 	struct v4l2_create_buffers crbufs = { };
@@ -694,6 +705,7 @@ int testReqBufs(struct node *node)
 		mmap_valid = !ret;
 		if (mmap_valid)
 			node->buf_caps = caps = q.g_capabilities();
+		setValidMemoryType(node, caps);
 		if (caps) {
 			fail_on_test(mmap_valid ^ !!(caps & V4L2_BUF_CAP_SUPPORTS_MMAP));
 			if (caps & V4L2_BUF_CAP_SUPPORTS_ORPHANED_BUFS)
@@ -730,7 +742,6 @@ int testReqBufs(struct node *node)
 			fail_on_test(q.g_type() != i);
 			fail_on_test(q.reqbufs(node, 1));
 			fail_on_test(testQueryBuf(node, i, q.g_buffers()));
-			node->valid_memorytype |= 1 << V4L2_MEMORY_MMAP;
 		}
 
 		if (userptr_valid) {
@@ -741,7 +752,6 @@ int testReqBufs(struct node *node)
 			fail_on_test(q.g_type() != i);
 			fail_on_test(q.reqbufs(node, 1));
 			fail_on_test(testQueryBuf(node, i, q.g_buffers()));
-			node->valid_memorytype |= 1 << V4L2_MEMORY_USERPTR;
 		}
 
 		if (dmabuf_valid) {
@@ -752,7 +762,6 @@ int testReqBufs(struct node *node)
 			fail_on_test(q.g_type() != i);
 			fail_on_test(q.reqbufs(node, 1));
 			fail_on_test(testQueryBuf(node, i, q.g_buffers()));
-			node->valid_memorytype |= 1 << V4L2_MEMORY_DMABUF;
 		}
 
 		/*
@@ -2090,6 +2099,7 @@ int testUserPtr(struct node *node, struct node *node_m2m_cap, unsigned frame_cou
 				q.s_userptr(i, p, nullptr);
 			}
 		}
+		fail_on_test(q.reqbufs(node, 0));
 		stream_close();
 	}
 	return 0;
@@ -2189,18 +2199,8 @@ int testDmaBuf(struct node *expbuf_node, struct node *node, struct node *node_m2
 		if (node->is_m2m && !v4l_type_is_output(type))
 			continue;
 
-		if (expbuf_node->g_caps() & V4L2_CAP_VIDEO_CAPTURE_MPLANE)
-			expbuf_type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
-		else if (expbuf_node->g_caps() & V4L2_CAP_VIDEO_CAPTURE)
-			expbuf_type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-		else if (expbuf_node->g_caps() & V4L2_CAP_VIDEO_OUTPUT_MPLANE)
-			expbuf_type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
-		else
-			expbuf_type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
-
 		cv4l_queue q(type, V4L2_MEMORY_DMABUF);
 		cv4l_queue m2m_q(v4l_type_invert(type));
-		cv4l_queue exp_q(expbuf_type, V4L2_MEMORY_MMAP);
 
 		if (testSetupVbi(node, type))
 			continue;
@@ -2213,6 +2213,22 @@ int testDmaBuf(struct node *expbuf_node, struct node *node, struct node *node_m2
 			return ENOTTY;
 		}
 		fail_on_test(!can_stream);
+		setValidMemoryType(node, q.g_capabilities());
+
+		if ((node->valid_memorytype & (1 << V4L2_MEMORY_DMABUF)) &&
+		    expbuf_node->g_fd() < 0) {
+			warn_once("Cannot test DMABUF, specify --expbuf-device\n");
+			return ENOTTY;
+		}
+		if (expbuf_node->g_caps() & V4L2_CAP_VIDEO_CAPTURE_MPLANE)
+			expbuf_type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+		else if (expbuf_node->g_caps() & V4L2_CAP_VIDEO_CAPTURE)
+			expbuf_type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+		else if (expbuf_node->g_caps() & V4L2_CAP_VIDEO_OUTPUT_MPLANE)
+			expbuf_type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
+		else
+			expbuf_type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+		cv4l_queue exp_q(expbuf_type, V4L2_MEMORY_MMAP);
 
 		fail_on_test(q.reqbufs(node, 2));
 		fail_on_test(node->streamoff(q.g_type()));

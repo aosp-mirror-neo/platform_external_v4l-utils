@@ -647,6 +647,20 @@ static int testFormatsType(struct node *node, int ret,  unsigned type, struct v4
 	return 0;
 }
 
+void setValidBufTypes(struct node *node)
+{
+	struct v4l2_clip clip;
+	struct v4l2_format fmt;
+	int type;
+
+	node->valid_buftypes = 0;
+	for (type = 0; type <= V4L2_BUF_TYPE_LAST; type++) {
+		createInvalidFmt(fmt, clip, type);
+		if (!doioctl(node, VIDIOC_G_FMT, &fmt))
+			node->valid_buftypes |= 1 << type;
+	}
+}
+
 int testGetFormats(struct node *node)
 {
 	struct v4l2_clip clip;
@@ -655,12 +669,10 @@ int testGetFormats(struct node *node)
 	int type;
 	int ret;
 
+	setValidBufTypes(node);
 	for (type = 0; type <= V4L2_BUF_TYPE_LAST; type++) {
 		createInvalidFmt(fmt, clip, type);
 		ret = doioctl(node, VIDIOC_G_FMT, &fmt);
-		if (!ret)
-			node->valid_buftypes |= 1 << type;
-
 		ret = testFormatsType(node, ret, type, fmt);
 
 		if (ret && ret != ENOTTY)
