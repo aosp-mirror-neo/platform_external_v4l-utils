@@ -258,6 +258,43 @@ static int testAdapLogAddrs(struct node *node)
 	return 0;
 }
 
+static int testAdapLogAddrsVivid(struct node *node, int fd)
+{
+	struct cec_log_addrs laddrs;
+	char buf[3] = {};
+
+	memset(&laddrs, 0, sizeof(laddrs));
+	strcpy(laddrs.osd_name, "Compliance");
+	laddrs.num_log_addrs = 1;
+	laddrs.cec_version = CEC_OP_CEC_VERSION_2_0;
+	laddrs.log_addr_type[0] = CEC_LOG_ADDR_TYPE_TV;
+	laddrs.primary_device_type[0] = CEC_OP_PRIM_DEVTYPE_TV;
+	laddrs.all_device_types[0] = CEC_OP_ALL_DEVTYPE_TV;
+	write(fd, "6", 1);
+	fail_on_test(doioctl(node, CEC_ADAP_S_LOG_ADDRS, &laddrs));
+	fail_on_test(!(laddrs.flags & CEC_LOG_ADDRS_FL_CONFIG_FAILED));
+	fail_on_test(laddrs.log_addr_mask);
+	read(fd, buf, 2);
+	fail_on_test(strcmp(buf, "0"));
+
+	write(fd, "6", 1);
+	memset(&laddrs, 0, sizeof(laddrs));
+	strcpy(laddrs.osd_name, "Compliance");
+	laddrs.num_log_addrs = 1;
+	laddrs.cec_version = CEC_OP_CEC_VERSION_2_0;
+	laddrs.log_addr_type[0] = CEC_LOG_ADDR_TYPE_TV;
+	laddrs.primary_device_type[0] = CEC_OP_PRIM_DEVTYPE_TV;
+	laddrs.all_device_types[0] = CEC_OP_ALL_DEVTYPE_TV;
+	laddrs.flags = CEC_LOG_ADDRS_FL_ALLOW_UNREG_FALLBACK;
+	fail_on_test(doioctl(node, CEC_ADAP_S_LOG_ADDRS, &laddrs));
+	fail_on_test(laddrs.flags & CEC_LOG_ADDRS_FL_CONFIG_FAILED);
+	fail_on_test(laddrs.log_addr_mask != 0x8000);
+	read(fd, buf, 2);
+	fail_on_test(strcmp(buf, "0"));
+
+	return 0;
+}
+
 static int testTransmit(struct node *node)
 {
 	struct cec_msg msg;
@@ -1409,12 +1446,40 @@ void testAdapter(struct node &node, struct cec_log_addrs &laddrs,
 	printf("\tCEC_ADAP_G/S_LOG_ADDRS: %s\n", ok(testAdapLogAddrs(&node)));
 	fcntl(node.fd, F_SETFL, fcntl(node.fd, F_GETFL) & ~O_NONBLOCK);
 	sleep(1);
+
+	const char *last_slash = strrchr(node.device, '/');
+	bool is_root = geteuid() == 0;
+
+	if (!node.phys_addr && node.is_vivid && last_slash && is_root) {
+		struct cec_log_addrs clear = { };
+
+		doioctl(&node, CEC_ADAP_S_LOG_ADDRS, &clear);
+		sleep(1);
+		std::string error_inj_tx_timeouts =
+			std::string("/sys/kernel/debug/cec") + last_slash +
+			"/error-inj-tx-timeouts";
+		int fd;
+
+		if ((fd = open(error_inj_tx_timeouts.c_str(), O_RDWR)) < 0) {
+			fprintf(stderr, "Failed to open %s: %s\n",
+				error_inj_tx_timeouts.c_str(),
+				strerror(errno));
+		} else {
+			printf("\tCEC_ADAP_G/S_LOG_ADDRS (with vivid): %s\n",
+			       ok(testAdapLogAddrsVivid(&node, fd)));
+			write(fd, "0", 1);
+			close(fd);
+		}
+	}
+
 	if (node.caps & CEC_CAP_LOG_ADDRS) {
 		struct cec_log_addrs clear = { };
 
 		doioctl(&node, CEC_ADAP_S_LOG_ADDRS, &clear);
 		doioctl(&node, CEC_ADAP_S_LOG_ADDRS, &laddrs);
+		sleep(1);
 	}
+
 	doioctl(&node, CEC_ADAP_G_LOG_ADDRS, &laddrs);
 	if (laddrs.log_addr_mask != node.adap_la_mask)
 		printf("\tNew Logical Address Mask   : 0x%04x\n", laddrs.log_addr_mask);
