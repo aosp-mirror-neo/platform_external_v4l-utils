@@ -1000,8 +1000,7 @@ void testNode(struct node &node, struct node &node_m2m_cap, struct node &expbuf_
 		driver = reinterpret_cast<const char *>(vcap.driver);
 		is_uvcvideo = driver == "uvcvideo";
 		is_vivid = driver == "vivid";
-		if (is_vivid)
-			node.bus_info = reinterpret_cast<const char *>(vcap.bus_info);
+		node.bus_info = reinterpret_cast<const char *>(vcap.bus_info);
 		determine_codec_mask(node);
 	} else if (node.is_subdev()) {
 		doioctl(&node, VIDIOC_SUBDEV_QUERYCAP, &subdevcap);
@@ -1016,7 +1015,7 @@ void testNode(struct node &node, struct node &node_m2m_cap, struct node &expbuf_
 		if (parent_media_fd >= 0)
 			media_fd = parent_media_fd;
 		else
-			media_fd = mi_get_media_fd(node.g_fd(), node.bus_info);
+			media_fd = mi_get_media_bus_info(node.bus_info);
 	}
 
 	int fd = node.is_media() ? node.g_fd() : media_fd;
@@ -1662,6 +1661,7 @@ int main(int argc, char **argv)
 	std::string media_bus_info;
 	struct node expbuf_node;
 	std::string expbuf_media_bus_info;
+	int media_fd = -1;
 	const char *env_media_apps_color = getenv("MEDIA_APPS_COLOR");
 
 	/* command args */
@@ -1910,6 +1910,16 @@ int main(int argc, char **argv)
 			strerror(errno));
 		std::exit(EXIT_FAILURE);
 	}
+	if (type != MEDIA_TYPE_MEDIA && !media_bus_info.empty()) {
+		std::string media_devname;
+
+		media_fd = open_media_bus_info(media_bus_info, media_devname);
+		if (media_fd < 0) {
+			fprintf(stderr, "Failed to find media device for %s: %s\n",
+				media_bus_info.c_str(), strerror(errno));
+			std::exit(EXIT_FAILURE);
+		}
+	}
 
 	if (!expbuf_device.empty()) {
 		expbuf_node.s_trace(options[OptTrace]);
@@ -1922,7 +1932,7 @@ int main(int argc, char **argv)
 		}
 	}
 
-	testNode(node, node, expbuf_node, type, frame_count, all_fmt_frame_count);
+	testNode(node, node, expbuf_node, type, frame_count, all_fmt_frame_count, media_fd);
 
 	if (!expbuf_device.empty())
 		expbuf_node.close();

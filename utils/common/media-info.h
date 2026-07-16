@@ -51,12 +51,15 @@ std::string mi_get_devpath_from_dev_t(dev_t dev);
 
 /*
  * For a given device fd return the corresponding media device
- * or -1 if there is none.
- *
- * If bus_info is not NULL, then find the media device that
- * matches the given bus_info.
+ * or -1 if there is none. This only works if the media device
+ * is discoverable from where fd sits in /sys.
  */
-int mi_get_media_fd(int fd, const char *bus_info = NULL);
+int mi_get_media_fd(int fd);
+
+/*
+ * Find the media device that matches the given bus_info.
+ */
+int mi_get_media_bus_info(const char *bus_info);
 
 /* Return entity flags description */
 std::string mi_entflags2s(__u32 flags);

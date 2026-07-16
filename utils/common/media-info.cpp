@@ -216,7 +216,7 @@ std::string mi_get_devpath_from_dev_t(dev_t dev)
 	return devpath;
 }
 
-int mi_get_media_fd(int fd, const char *bus_info)
+int mi_get_media_fd(int fd)
 {
 	int media_fd = -1;
 	dev_t dev;
@@ -243,9 +243,39 @@ int mi_get_media_fd(int fd, const char *bus_info)
 			devname += ep->d_name;
 			media_fd = open(devname.c_str(), O_RDWR);
 
-			if (bus_info &&
-			    (ioctl(media_fd, MEDIA_IOC_DEVICE_INFO, &mdinfo) ||
-			     strcmp(mdinfo.bus_info, bus_info))) {
+			if (ioctl(media_fd, MEDIA_IOC_DEVICE_INFO, &mdinfo)) {
+				close(media_fd);
+				continue;
+			}
+			break;
+		}
+	}
+	closedir(dp);
+	return media_fd;
+}
+
+int mi_get_media_bus_info(const char *bus_info)
+{
+	int media_fd = -1;
+	DIR *dp;
+	struct dirent *ep;
+
+	if (!bus_info)
+		return -1;
+
+	dp = opendir("/dev");
+	if (dp == nullptr)
+		return -1;
+	while ((ep = readdir(dp))) {
+		if (!memcmp(ep->d_name, "media", 5) && isdigit(ep->d_name[5])) {
+			struct media_device_info mdinfo;
+			std::string devname("/dev/");
+
+			devname += ep->d_name;
+			media_fd = open(devname.c_str(), O_RDWR);
+
+			if (ioctl(media_fd, MEDIA_IOC_DEVICE_INFO, &mdinfo) ||
+			    strcmp(mdinfo.bus_info, bus_info)) {
 				close(media_fd);
 				continue;
 			}

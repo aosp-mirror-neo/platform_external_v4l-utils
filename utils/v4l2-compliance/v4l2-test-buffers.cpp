@@ -2312,7 +2312,7 @@ int testDmaBuf(struct node *expbuf_node, struct node *node, struct node *node_m2
 int testRequests(struct node *node, bool test_streaming)
 {
 	filehandles fhs;
-	int media_fd = fhs.add(mi_get_media_fd(node->g_fd(), node->bus_info));
+	int media_fd = fhs.add(mi_get_media_bus_info(node->bus_info));
 	int req_fd;
 	struct test_query_ext_ctrl valid_qctrl;
 	v4l2_ext_controls ctrls;
@@ -2448,7 +2448,7 @@ int testRequests(struct node *node, bool test_streaming)
 	fail_on_test(doioctl_fd(req_fd, MEDIA_REQUEST_IOC_REINIT, nullptr) != EBADF);
 
 	// Open media_fd and alloc a request again
-	media_fd = fhs.add(mi_get_media_fd(node->g_fd(), node->bus_info));
+	media_fd = fhs.add(mi_get_media_bus_info(node->bus_info));
 	fail_on_test(doioctl_fd(media_fd, MEDIA_IOC_REQUEST_ALLOC, &req_fd));
 	fhs.add(req_fd);
 	ctrls.count = 1;
@@ -2523,7 +2523,7 @@ int testRequests(struct node *node, bool test_streaming)
 	unsigned num_requests = 2 * num_bufs;
 	last_seq.init();
 
-	media_fd = fhs.add(mi_get_media_fd(node->g_fd(), node->bus_info));
+	media_fd = fhs.add(mi_get_media_bus_info(node->bus_info));
 
 	// Allocate the requests
 	for (unsigned i = 0; i < num_requests; i++) {
