@@ -3450,10 +3450,6 @@ void edid_state::check_cta_blocks()
 		fail("Native interlaced timings are a mix of several resolutions.\n");
 	if (native_ilace && !native_prog)
 		fail("A native interlaced timing is present, but not a native progressive timing.\n");
-	if (!native_prog_mixed_resolutions && native_prog > 1)
-		warn("Multiple native progressive timings are defined.\n");
-	if (!native_ilace_mixed_resolutions && native_ilace > 1)
-		warn("Multiple native interlaced timings are defined.\n");
 
 	if (native_nvrdb_vact &&
 	    (max_pref_prog_vact > native_nvrdb_vact ||
