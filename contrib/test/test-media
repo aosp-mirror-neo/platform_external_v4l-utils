@@ -290,12 +290,12 @@ if [ $vivid -eq 1 -a $setup -eq 0 ]; then
 	echo vivid compliance tests, contiguous planes | tee /dev/kmsg
 	echo
 	date
-	stdbuf -oL $v4l2_compliance -m platform:vivid-000 -z platform:vivid-002 -e vivid-002-vid-cap -P -s10 -a 2>&1 | tee -a $tmp
+	stdbuf -oL $v4l2_compliance -m platform:vivid-000 -Z platform:vivid-002 -e vivid-002-vid-cap -P -s10 -a 2>&1 | tee -a $tmp
 	echo
 	echo vivid compliance tests, non-contiguous planes | tee /dev/kmsg
 	echo
 	date
-	stdbuf -oL $v4l2_compliance -m platform:vivid-001 -z platform:vivid-002 -e vivid-002-vid-out -P -s10 -a 2>&1 | tee -a $tmp
+	stdbuf -oL $v4l2_compliance -m platform:vivid-001 -Z platform:vivid-002 -e vivid-002-vid-out -P -s10 -a 2>&1 | tee -a $tmp
 	echo
 	echo
 	echo
@@ -450,7 +450,7 @@ if [ $vim2m -eq 1 -a $setup -eq 0 ]; then
 	echo vim2m compliance tests | tee /dev/kmsg
 	echo
 	date
-	stdbuf -oL $v4l2_compliance -m platform:vim2m -z platform:vivid-002 -e vivid-002-vid-cap -s10 -P -a 2>&1 | tee -a $tmp
+	stdbuf -oL $v4l2_compliance -m platform:vim2m -Z platform:vivid-002 -e vivid-002-vid-cap -s10 -P -a 2>&1 | tee -a $tmp
 	echo
 	echo
 	echo
@@ -482,7 +482,7 @@ if [ $vim2m -eq 1 -a $setup -eq 0 ]; then
 	echo vim2m multiplanar compliance tests | tee /dev/kmsg
 	echo
 	date
-	stdbuf -oL $v4l2_compliance -m platform:vim2m -z platform:vivid-002 -e vivid-002-vid-cap -s10 -P -a 2>&1 | tee -a $tmp
+	stdbuf -oL $v4l2_compliance -m platform:vim2m -Z platform:vivid-002 -e vivid-002-vid-cap -s10 -P -a 2>&1 | tee -a $tmp
 	echo
 	echo
 	echo
@@ -574,7 +574,7 @@ if [ $vimc -eq 1 -a $setup -eq 0 ]; then
 	echo vimc compliance tests | tee /dev/kmsg
 	echo
 	date
-	stdbuf -oL $v4l2_compliance -m $vimc_device -z platform:vivid-002 -e vivid-002-vid-cap -s10 -P -a 2>&1 | tee -a $tmp
+	stdbuf -oL $v4l2_compliance -m $vimc_device -Z platform:vivid-002 -e vivid-002-vid-cap -s10 -P -a 2>&1 | tee -a $tmp
 	echo
 	echo
 	echo
@@ -696,12 +696,12 @@ if [ $vicodec -eq 1 -a $setup -eq 0 ]; then
 	echo vicodec encoder compliance tests | tee /dev/kmsg
 	echo
 	date
-	stdbuf -oL $v4l2_compliance -z platform:vicodec -d stateful-encoder-source -z platform:vivid-002 -e vivid-002-vid-cap -s10 -P -a 2>&1 | tee -a $tmp
+	stdbuf -oL $v4l2_compliance -z platform:vicodec -d stateful-encoder-source -Z platform:vivid-002 -e vivid-002-vid-cap -s10 -P -a 2>&1 | tee -a $tmp
 
 	echo
 	echo vicodec decoder compliance tests | tee /dev/kmsg
 	echo
-	decful_opts='-z platform:vicodec -d stateful-decoder-source -z platform:vivid-002 -e vivid-002-vid-cap'
+	decful_opts='-z platform:vicodec -d stateful-decoder-source -Z platform:vivid-002 -e vivid-002-vid-cap'
 	date
 	stdbuf -oL $v4l2_compliance $decful_opts --stream-from-hdr=$tmpdir/comp.hdr.yu12.1280.24 -s24 -P -a 2>&1 | tee -a $tmp
 	date

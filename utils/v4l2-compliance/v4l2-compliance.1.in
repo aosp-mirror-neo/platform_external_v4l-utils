@@ -84,18 +84,24 @@ with the bus info string as specified by the \fB-z\fR option.
 \fB\-u\fR, \fB\-\-subdev\-device\fR \fI<dev>\fR
 Use device \fI<dev>\fR as the v4l-subdevX device. If \fI<dev>\fR is a number, then /dev/v4l-subdev\fI<dev>\fR is used.
 Otherwise if \fB-z\fR was specified earlier, then \fI<dev>\fR is the entity name
-\fB\-e\fR, \fB\-\-exp\-buf\-device\fR \fI<dev>\fR
-Use device \fI<dev>\fR as the video device used to export DMABUFfers for doing DMABUF
-streaming tests. If \fI<dev>\fR is a number, then /dev/video\fI<dev>\fR is used.
-Otherwise if \fB-z\fR was specified earlier, then \fI<dev>\fR is the entity name
-or interface ID (if prefixed with 0x) as found in the topology of the media device
-with the bus info string as specified by the \fB-z\fR option.
-If this option is not specified, then the DMABUF streaming tests will be skipped.
 .TP
 \fB-z\fR, \fB--media-bus-info\fR \fI<bus-info>\fR
 Find the media device with the given bus info string. If set, then
 the options above can use the entity name or interface ID to refer to the
 device nodes. Example: v4l2-compliance -z platform:vivid-000 -d vivid-000-vid-cap
+.TP
+\fB\-e\fR, \fB\-\-exp\-buf\-device\fR \fI<dev>\fR
+Use device \fI<dev>\fR as the video device used to export DMABUFfers for doing DMABUF
+streaming tests. If \fI<dev>\fR is a number, then /dev/video\fI<dev>\fR is used.
+Otherwise if \fB-Z\fR was specified earlier, then \fI<dev>\fR is the entity name
+or interface ID (if prefixed with 0x) as found in the topology of the media device
+with the bus info string as specified by the \fB-Z\fR option.
+If this option is not specified, then the DMABUF streaming tests will be skipped.
+.TP
+\fB-Z\fR, \fB--expbuf-media-bus-info\fR \fI<bus-info>\fR
+Find the media device with the given bus info string. If set, then
+the \fB-e\fR option above can use the entity name or interface ID to refer to the
+device nodes. Example: v4l2-compliance -Z platform:vivid-000 -d vivid-000-vid-cap
 .TP
 \fB\-m\fR, \fB\-\-media\-device\fR \fI<dev>\fR
 Use device \fI<dev>\fR as the media controller device. Besides this device it also tests

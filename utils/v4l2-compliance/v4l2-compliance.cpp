@@ -65,6 +65,7 @@ enum Option {
 	OptUseWrapper = 'w',
 	OptExitOnWarn = 'W',
 	OptMediaBusInfo = 'z',
+	OptExpBufMediaBusInfo = 'Z',
 	OptStreamFrom = 128,
 	OptStreamFromHdr,
 	OptVersion,
@@ -127,6 +128,7 @@ static struct option long_options[] = {
 	{"media-device", required_argument, nullptr, OptSetMediaDevice},
 	{"media-device-only", required_argument, nullptr, OptSetMediaDeviceOnly},
 	{"media-bus-info", required_argument, nullptr, OptMediaBusInfo},
+	{"expbuf-media-bus-info", required_argument, nullptr, OptExpBufMediaBusInfo},
 	{"help", no_argument, nullptr, OptHelp},
 	{"verbose", no_argument, nullptr, OptVerbose},
 	{"color", required_argument, nullptr, OptColor},
@@ -202,14 +204,20 @@ static void usage()
 	printf("                     Use device <dev> as the v4l-subdev device.\n");
 	printf("                     If <dev> starts with a digit, then /dev/v4l-subdev<dev> is used.\n");
 	printf("                     See the -d description of how <dev> is used in combination with -z.\n");
-	printf("  -e, --expbuf-device <dev>\n");
-	printf("                     Use video device <dev> to obtain DMABUF handles.\n");
-	printf("                     If <dev> starts with a digit, then /dev/video<dev> is used.\n");
-	printf("                     See the -d description of how <dev> is used in combination with -z.\n");
 	printf("  -z, --media-bus-info <bus-info>\n");
 	printf("                     Find the media device with the given bus info string. If set, then\n");
 	printf("                     the options above can use the entity name or interface ID to refer\n");
 	printf("                     to the device nodes.\n");
+	printf("  -e, --expbuf-device <dev>\n");
+	printf("                     Use video device <dev> to obtain DMABUF handles.\n");
+	printf("                     If <dev> starts with a digit, then /dev/video<dev> is used.\n");
+	printf("                     Otherwise if -Z was specified earlier, then <dev> is the entity name\n");
+	printf("                     or interface ID (if prefixed with 0x) as found in the topology of the\n");
+	printf("                     media device with the bus info string as specified by the -Z option.\n");
+	printf("  -Z, --expbuf-media-bus-info <bus-info>\n");
+	printf("                     Find the media device for the -e option with the given bus info string.\n");
+	printf("                     If set, then the -e option above can use the entity name or interface ID to\n");
+	printf("                     refer to the device node.\n");
 	printf("  -m, --media-device <dev>\n");
 	printf("                     Use device <dev> as the media controller device. Besides this\n");
 	printf("                     device it also tests all interfaces it finds.\n");
@@ -1651,8 +1659,9 @@ int main(int argc, char **argv)
 	int i;
 	struct node node;
 	media_type type = MEDIA_TYPE_UNKNOWN;
-	struct node expbuf_node;
 	std::string media_bus_info;
+	struct node expbuf_node;
+	std::string expbuf_media_bus_info;
 	const char *env_media_apps_color = getenv("MEDIA_APPS_COLOR");
 
 	/* command args */
@@ -1739,8 +1748,11 @@ int main(int argc, char **argv)
 		case OptMediaBusInfo:
 			media_bus_info = optarg;
 			break;
+		case OptExpBufMediaBusInfo:
+			expbuf_media_bus_info = optarg;
+			break;
 		case OptSetExpBufDevice:
-			expbuf_device = make_devname(optarg, "video", media_bus_info);
+			expbuf_device = make_devname(optarg, "video", expbuf_media_bus_info);
 			break;
 		case OptStreaming:
 			if (optarg)
