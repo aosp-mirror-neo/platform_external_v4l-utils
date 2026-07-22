@@ -1,4 +1,4 @@
-# Generated with gen_keytables.pl from drivers/media/rc/keymaps/rc-videomate-m1f.c
+# Generated with gen_keytables.pl from drivers/media/rc/keymaps/rc-videomate-k100.c
 [[protocols]]
 name = "videomate_k100"
 protocol = "unknown"
