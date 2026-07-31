@@ -356,7 +356,7 @@ static void usage()
 	       "                           If <secs2> is specified, then sleep for <secs2> seconds\n"
 	       "                           before transmitting <Standby>.\n"
 	       "                           If <hpd-may-be-low> is 1, then the HPD is allowed to be low when in standby.\n"
-	       "  --stress-test-random-standby-wakeup-cycle cnt=<count>[,max-sleep=<maxsecs>][,min-sleep=<minsecs>][,seed=<seed>][,hpd-may-be-low=<0/1>]\n"
+	       "  --stress-test-random-standby-wakeup-cycle cnt=<count>[,max-sleep=<maxsecs>][,min-sleep=<minsecs>][wakeup-sleep=<wakeupsecs>][,seed=<seed>][,hpd-may-be-low=<0/1>]\n"
 	       "                           Randomly transmit <Standby> or <Image View On> up to <count> times.\n"
 	       "			   If <count> is 0, then never stop. After each transmit wait between\n"
 	       "                           <min-sleep> (default 0) and <max-sleep> (default 10) seconds.\n"
@@ -366,7 +366,8 @@ static void usage()
 	       "                           This test does not check if the display reached the new state,\n"
 	       "                           it checks if the display can handle this situation without\n"
 	       "                           locking up. After every 10 cycles it attempts to properly\n"
-	       "                           wake up the display and check if that works. If not, this test fails.\n"
+	       "                           wake up the display (waiting <wakeupsecs>) and check if that\n"
+	       "                           works. If not, this test fails.\n"
 	       "\n"
 	       CEC_PARSE_USAGE
 	       "\n"
@@ -1976,6 +1977,7 @@ static void stress_test_standby_wakeup_cycle(const struct node &node, unsigned c
 static void stress_test_random_standby_wakeup_cycle(const struct node &node, unsigned cnt,
 						    double min_sleep, double max_sleep,
 						    bool has_seed, unsigned seed,
+						    unsigned wakeup_sleep,
 						    bool hpd_may_be_low)
 {
 	struct cec_log_addrs laddrs = { };
@@ -2049,7 +2051,7 @@ static void stress_test_random_standby_wakeup_cycle(const struct node &node, uns
 		bool verify_result = iter % 10 == 0;
 
 		if (verify_result)
-			usecs1 = 30 * 1000000;
+			usecs1 = wakeup_sleep * 1000000;
 
 		if (usecs1)
 			printf("%s: Sleep %.2fs before Image View On\n", ts2s(current_ts()).c_str(),
@@ -2415,6 +2417,7 @@ int main(int argc, char **argv)
 	double stress_test_random_standby_wakeup_max_sleep = 10;
 	bool stress_test_random_standby_wakeup_has_seed = false;
 	unsigned int stress_test_random_standby_wakeup_seed = 0;
+	unsigned int stress_test_random_standby_wakeup_sleep = 30;
 	bool stress_test_random_standby_wakeup_hpd_may_be_low = false;
 	bool warn_if_unconfigured = false;
 	__u16 phys_addr;
@@ -2910,6 +2913,7 @@ int main(int argc, char **argv)
 				"max-sleep",
 				"seed",
 				"hpd-may-be-low",
+				"wakeup-sleep",
 				nullptr
 			};
 			char *value, *subs = optarg;
@@ -2931,6 +2935,9 @@ int main(int argc, char **argv)
 					break;
 				case 4:
 					stress_test_random_standby_wakeup_hpd_may_be_low = !!strtoul(value, nullptr, 0);
+					break;
+				case 5:
+					stress_test_random_standby_wakeup_sleep = strtoul(value, nullptr, 0);
 					break;
 				default:
 					std::exit(EXIT_FAILURE);
@@ -3345,6 +3352,7 @@ int main(int argc, char **argv)
 							stress_test_random_standby_wakeup_max_sleep,
 							stress_test_random_standby_wakeup_has_seed,
 							stress_test_random_standby_wakeup_seed,
+							stress_test_random_standby_wakeup_sleep,
 							stress_test_random_standby_wakeup_hpd_may_be_low);
 
 skip_la:
