@@ -678,7 +678,7 @@ std::string dvflags2s(unsigned vsync, int val)
 		s += "has CTA-861 VIC, ";
 	if (val & V4L2_DV_FL_HAS_HDMI_VIC)
 		s += "has HDMI VIC, ";
-	if (s.length())
+	if (s.length() >= 2)
 		return s.erase(s.length() - 2, 2);
 	return s;
 }

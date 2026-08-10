@@ -85,7 +85,7 @@ static std::string laflags2s(unsigned flags)
 		s += "CDC-Only, ";
 	if (flags & CEC_LOG_ADDRS_FL_CONFIG_FAILED)
 		s += "Config-Failed, ";
-	if (s.length())
+	if (s.length() > 2)
 		s.erase(s.length() - 2, 2);
 	return s + ")";
 }
@@ -275,7 +275,7 @@ std::string cec_all_dev_types2s(unsigned types)
 		s += "Audio System, ";
 	if (types & CEC_OP_ALL_DEVTYPE_SWITCH)
 		s += "Switch, ";
-	if (s.length())
+	if (s.length() >= 2)
 		return s.erase(s.length() - 2, 2);
 	return s;
 }
