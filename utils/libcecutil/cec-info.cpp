@@ -83,6 +83,8 @@ static std::string laflags2s(unsigned flags)
 		s += "Allow RC Passthrough, ";
 	if (flags & CEC_LOG_ADDRS_FL_CDC_ONLY)
 		s += "CDC-Only, ";
+	if (flags & CEC_LOG_ADDRS_FL_CONFIG_FAILED)
+		s += "Config-Failed, ";
 	if (s.length())
 		s.erase(s.length() - 2, 2);
 	return s + ")";
