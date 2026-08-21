@@ -26,6 +26,9 @@
 #include <dirent.h>
 #include <getopt.h>
 #include <sys/epoll.h>
+#include <sys/sysmacros.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #include <linux/media.h>
 
@@ -1053,6 +1056,13 @@ static int open_media_bus_info(const std::string &bus_info)
 static const char *make_devname(const char *device, const char *devname,
 				      const std::string &media_bus_info)
 {
+	static char newdev[32];
+	char sysname[32];
+	char target[1024];
+	struct stat devstat;
+	char *p;
+	int ret;
+
 	if (device[0] >= '0' && device[0] <= '9' && strlen(device) <= 3) {
 		static char newdev[32];
 
@@ -1109,10 +1119,43 @@ static const char *make_devname(const char *device, const char *devname,
 	if (i >= topology.num_interfaces)
 		goto err;
 
-	static char newdev[32];
-	sprintf(newdev, "/dev/char/%d:%d",
+	sprintf(sysname, "/sys/dev/char/%d:%d",
 		ifaces[i].devnode.major, ifaces[i].devnode.minor);
-	device = newdev;
+	ret = readlink(sysname, target, sizeof(target) - 1);
+	if (ret < 0)
+		goto err;
+
+	target[ret] = '\0';
+	p = strrchr(target, '/');
+	if (p == NULL)
+		return NULL;
+
+	sprintf(newdev, "/dev/%s", p + 1);
+	if (strstr(p + 1, "dvb")) {
+		char *s = p + 1;
+
+		if (strncmp(s, "dvb", 3))
+			goto err;
+		s += 3;
+		p = strchr(s, '.');
+		if (!p)
+			goto err;
+		*p = '/';
+		sprintf(newdev, "/dev/dvb/adapter%s", s);
+	} else {
+		sprintf(newdev, "/dev/%s", p + 1);
+	}
+	ret = stat(newdev, &devstat);
+	if (ret < 0)
+		goto err;
+
+	/* Sanity check: udev might have reordered the device nodes.
+	 * Make sure the major/minor match. We should really use
+	 * libudev.
+	 */
+	if (major(devstat.st_rdev) == ifaces[i].devnode.major &&
+	    minor(devstat.st_rdev) == ifaces[i].devnode.minor)
+		device = newdev;
 
 err:
 	delete [] ents;
