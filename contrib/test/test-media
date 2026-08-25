@@ -544,7 +544,7 @@ if [ $vimc -eq 1 ]; then
 			vimc_device=platform:$i
 		fi
 	done
-	if [ "$vimc_device" -eq "" ]; then
+	if [ -z "$vimc_device" ]; then
 		echo "FAIL: can't find vimc device" | tee -a $tmp
 		unload_modules
 		exit 0
