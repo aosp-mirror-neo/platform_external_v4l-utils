@@ -1135,6 +1135,120 @@ static uint8_t displayport_edid_with_cta861[384] = {
 
 /******************************************************/
 
+static void update_sedid()
+{
+	FILE *fin = nullptr;
+	int loc;
+
+	if (file_in) {
+		if (!strcmp(file_in, "-"))
+			fin = stdin;
+		else
+			fin = fopen(file_in, "r");
+		if (!fin) {
+			fprintf(stderr, "Failed to open %s: %s\n", file_in,
+				strerror(errno));
+			std::exit(EXIT_FAILURE);
+		}
+	}
+	if (fin) {
+		read_edid_file(fin, &sedid);
+		if (sedid.blocks == 0) {
+			fprintf(stderr, "%s contained an empty EDID, ignoring.\n",
+				file_in ? file_in : "stdin");
+			std::exit(EXIT_FAILURE);
+		}
+		if (fin != stdin)
+			fclose(fin);
+	}
+	if (toggle_cta861_hdr_flags || phys_addr >= 0) {
+		loc = get_edid_cta861_hdr_location(sedid.edid, sedid.blocks * 128);
+		if (loc >= 0) {
+			sedid.edid[loc] ^= toggle_cta861_hdr_flags;
+			if (phys_addr >= 0)
+				set_edid_phys_addr(sedid.edid, sedid.blocks * 128, phys_addr);
+		}
+	}
+	if (toggle_speaker1_flags || toggle_speaker2_flags || toggle_speaker3_flags) {
+		loc = get_edid_speaker_location(sedid.edid, sedid.blocks * 128);
+		if (loc >= 0) {
+			sedid.edid[loc] ^= toggle_speaker1_flags;
+			sedid.edid[loc + 1] ^= toggle_speaker2_flags;
+			sedid.edid[loc + 2] ^= toggle_speaker3_flags;
+		}
+	}
+	if (toggle_hdmi_vsdb_dc_flags || toggle_hdmi_vsdb_cnc_flags) {
+		loc = get_edid_hdmi_vsdb_location(sedid.edid, sedid.blocks * 128);
+
+		if (loc >= 0) {
+			__u8 len = sedid.edid[loc] & 0x1f;
+
+			if (len >= 6)
+				sedid.edid[loc + 6] ^= toggle_hdmi_vsdb_dc_flags;
+			if (len >= 8)
+				sedid.edid[loc + 8] ^= toggle_hdmi_vsdb_cnc_flags;
+		}
+	}
+	if (toggle_hf_vsdb_flags) {
+		loc = get_edid_hf_vsdb_location(sedid.edid, sedid.blocks * 128);
+		if (loc >= 0)
+			sedid.edid[loc + 1] ^= toggle_hf_vsdb_flags;
+	}
+	if (toggle_vid_cap_flags || mod_s_pt >= 0 ||
+	    mod_s_ce >= 0 || mod_s_it >= 0) {
+		loc = get_edid_vid_cap_location(sedid.edid, sedid.blocks * 128);
+		if (loc >= 0) {
+			sedid.edid[loc] ^= toggle_vid_cap_flags;
+			if (mod_s_ce >= 0) {
+				sedid.edid[loc] &= 0xfc;
+				sedid.edid[loc] |= mod_s_ce << 0;
+			}
+			if (mod_s_it >= 0) {
+				sedid.edid[loc] &= 0xf3;
+				sedid.edid[loc] |= mod_s_it << 2;
+			}
+			if (mod_s_pt >= 0) {
+				sedid.edid[loc] &= 0xcf;
+				sedid.edid[loc] |= mod_s_pt << 4;
+			}
+		}
+	}
+	if (toggle_colorimetry_flags1 || toggle_colorimetry_flags2) {
+		loc = get_edid_colorimetry_location(sedid.edid, sedid.blocks * 128);
+		if (loc >= 0) {
+			sedid.edid[loc] ^= toggle_colorimetry_flags1;
+			sedid.edid[loc + 1] ^= toggle_colorimetry_flags2;
+		}
+	}
+	if (toggle_hdr_md_flags) {
+		loc = get_edid_hdr_md_location(sedid.edid, sedid.blocks * 128);
+		if (loc >= 0)
+			sedid.edid[loc] ^= toggle_hdr_md_flags;
+	}
+
+	if (!options[OptShowEdid])
+		return;
+
+	fix_edid(&sedid);
+
+	for (unsigned b = 0; b < sedid.blocks; b++) {
+		if (b)
+			printf("\n");
+		for (unsigned i = 0; i < 128; i += 16) {
+			for (unsigned j = i; j < i + 16; j++) {
+				if (j > i)
+					printf(" ");
+				printf("%02x", sedid.edid[b * 128 + j]);
+			}
+			printf("\n");
+		}
+	}
+	if (file_in) {
+		free(sedid.edid);
+		sedid.edid = nullptr;
+	}
+}
+
 void edid_cmd(int ch, char *optarg)
 {
 	char *value, *subs;
@@ -1372,6 +1486,9 @@ void edid_cmd(int ch, char *optarg)
 				 std::exit(EXIT_FAILURE);
 			}
 		}
+		update_sedid();
+		if (ch == OptShowEdid)
+			std::exit(0);
 		break;
 
 	case OptClearEdid:
@@ -1447,7 +1564,6 @@ void edid_cmd(int ch, char *optarg)
 void edid_set(cv4l_fd &_fd)
 {
 	int fd = _fd.g_fd();
-	int loc;
 
 	if (options[OptClearEdid]) {
 		struct v4l2_edid edid;
@@ -1457,119 +1573,15 @@ void edid_set(cv4l_fd &_fd)
 		doioctl(fd, VIDIOC_S_EDID, &edid);
 	}
 
-	if (options[OptSetEdid] || options[OptShowEdid]) {
-		FILE *fin = nullptr;
-
-		if (file_in) {
-			if (!strcmp(file_in, "-"))
-				fin = stdin;
-			else
-				fin = fopen(file_in, "r");
-			if (!fin) {
-				fprintf(stderr, "Failed to open %s: %s\n", file_in,
-						strerror(errno));
-				std::exit(EXIT_FAILURE);
-			}
-		}
-		if (fin) {
-			read_edid_file(fin, &sedid);
-			if (sedid.blocks == 0) {
-				fprintf(stderr, "%s contained an empty EDID, ignoring.\n",
-						file_in ? file_in : "stdin");
-				std::exit(EXIT_FAILURE);
-			}
-		}
-		if (toggle_cta861_hdr_flags || phys_addr >= 0) {
-			loc = get_edid_cta861_hdr_location(sedid.edid, sedid.blocks * 128);
-			if (loc >= 0) {
-				sedid.edid[loc] ^= toggle_cta861_hdr_flags;
-				if (phys_addr >= 0)
-					set_edid_phys_addr(sedid.edid, sedid.blocks * 128, phys_addr);
-			}
-		}
-		if (toggle_speaker1_flags || toggle_speaker2_flags || toggle_speaker3_flags) {
-			loc = get_edid_speaker_location(sedid.edid, sedid.blocks * 128);
-			if (loc >= 0) {
-				sedid.edid[loc] ^= toggle_speaker1_flags;
-				sedid.edid[loc + 1] ^= toggle_speaker2_flags;
-				sedid.edid[loc + 2] ^= toggle_speaker3_flags;
-			}
-		}
-		if (toggle_hdmi_vsdb_dc_flags || toggle_hdmi_vsdb_cnc_flags) {
-			loc = get_edid_hdmi_vsdb_location(sedid.edid, sedid.blocks * 128);
-
-			if (loc >= 0) {
-				__u8 len = sedid.edid[loc] & 0x1f;
-
-				if (len >= 6)
-					sedid.edid[loc + 6] ^= toggle_hdmi_vsdb_dc_flags;
-				if (len >= 8)
-					sedid.edid[loc + 8] ^= toggle_hdmi_vsdb_cnc_flags;
-			}
-		}
-		if (toggle_hf_vsdb_flags) {
-			loc = get_edid_hf_vsdb_location(sedid.edid, sedid.blocks * 128);
-			if (loc >= 0)
-				sedid.edid[loc + 1] ^= toggle_hf_vsdb_flags;
-		}
-		if (toggle_vid_cap_flags || mod_s_pt >= 0 ||
-		    mod_s_ce >= 0 || mod_s_it >= 0) {
-			loc = get_edid_vid_cap_location(sedid.edid, sedid.blocks * 128);
-			if (loc >= 0) {
-				sedid.edid[loc] ^= toggle_vid_cap_flags;
-				if (mod_s_ce >= 0) {
-					sedid.edid[loc] &= 0xfc;
-					sedid.edid[loc] |= mod_s_ce << 0;
-				}
-				if (mod_s_it >= 0) {
-					sedid.edid[loc] &= 0xf3;
-					sedid.edid[loc] |= mod_s_it << 2;
-				}
-				if (mod_s_pt >= 0) {
-					sedid.edid[loc] &= 0xcf;
-					sedid.edid[loc] |= mod_s_pt << 4;
-				}
-			}
-		}
-		if (toggle_colorimetry_flags1 || toggle_colorimetry_flags2) {
-			loc = get_edid_colorimetry_location(sedid.edid, sedid.blocks * 128);
-			if (loc >= 0) {
-				sedid.edid[loc] ^= toggle_colorimetry_flags1;
-				sedid.edid[loc + 1] ^= toggle_colorimetry_flags2;
-			}
-		}
-		if (toggle_hdr_md_flags) {
-			loc = get_edid_hdr_md_location(sedid.edid, sedid.blocks * 128);
-			if (loc >= 0)
-				sedid.edid[loc] ^= toggle_hdr_md_flags;
-		}
+	if (options[OptSetEdid]) {
 		if (!options[OptKeepEdidChecksums])
 			fix_edid(&sedid);
-		if (verbose && options[OptSetEdid])
+		if (verbose)
 			print_edid_mods(&sedid);
-		if (options[OptShowEdid]) {
-			for (unsigned b = 0; b < sedid.blocks; b++) {
-				if (b)
-					printf("\n");
-				for (unsigned i = 0; i < 128; i += 16) {
-					for (unsigned j = i; j < i + 16; j++) {
-						if (j > i)
-							printf(" ");
-						printf("%02x", sedid.edid[b * 128 + j]);
-					}
-					printf("\n");
-				}
-			}
-		} else {
-			doioctl(fd, VIDIOC_S_EDID, &sedid);
-		}
-		if (fin) {
-			if (sedid.edid) {
-				free(sedid.edid);
-				sedid.edid = nullptr;
-			}
-			if (fin != stdin)
-				fclose(fin);
+		doioctl(fd, VIDIOC_S_EDID, &sedid);
+		if (file_in) {
+			free(sedid.edid);
+			sedid.edid = nullptr;
 		}
 	}
 }
