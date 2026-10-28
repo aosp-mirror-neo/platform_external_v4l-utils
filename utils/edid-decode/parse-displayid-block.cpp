@@ -2657,6 +2657,10 @@ unsigned edid_state::displayid_block(const unsigned version, const unsigned char
 			   check_displayid_datablock_revision(x[1], 0xe8, 1);
 		   else
 			   check_displayid_datablock_revision(x[1], 0xc8);
+		   if (block_rev >= 1 && (x[1] & 0x20)) {
+			   printf("    Also supports YCbCr 4:2:0\n");
+			   dispid.has_ycbcr_420 = true;
+		   }
 		   if (x[1] & 0x08) {
 			   for (i = 0; i < len / 2; i++)
 				   parse_displayid_type_4_8_timing((x[1] & 0xc0) >> 6,
