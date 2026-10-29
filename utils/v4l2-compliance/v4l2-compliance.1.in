@@ -178,6 +178,12 @@ Highlight OK/warn/fail/FAIL strings with colors. OK is marked green, warn is
 marked bold, and fail/FAIL are marked bright red if enabled. \fI<when>\fR can
 be \fIalways\fR, \fInever\fR, or \fIauto\fR (the default).
 .TP
+\fB\-\-is\-uvc\fR
+Run the tests as if the detected driver name was "uvcvideo".
+.TP
+\fB\-\-is\-vivid\fR
+Run the tests as if the detected driver name was "vivid".
+.TP
 \fB\-n\fR, \fB\-\-no\-warnings\fR
 Turn off warning messages. They are still counted in the summary, but you won't see them.
 .TP

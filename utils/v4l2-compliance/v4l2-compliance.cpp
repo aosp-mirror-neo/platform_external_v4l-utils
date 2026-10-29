@@ -66,7 +66,9 @@ enum Option {
 	OptExitOnWarn = 'W',
 	OptMediaBusInfo = 'z',
 	OptExpBufMediaBusInfo = 'Z',
-	OptStreamFrom = 128,
+	OptIsUvc = 128,
+	OptIsVivid,
+	OptStreamFrom,
 	OptStreamFromHdr,
 	OptVersion,
 	OptLast = 256
@@ -85,8 +87,8 @@ bool show_warnings = true;
 bool show_colors;
 bool exit_on_fail;
 bool exit_on_warn;
-bool is_vivid;
-bool is_uvcvideo;
+bool is_vivid = false;
+bool is_uvcvideo = false;
 int media_fd = -1;
 unsigned warnings;
 bool has_mmu = true;
@@ -132,6 +134,8 @@ static struct option long_options[] = {
 	{"help", no_argument, nullptr, OptHelp},
 	{"verbose", no_argument, nullptr, OptVerbose},
 	{"color", required_argument, nullptr, OptColor},
+	{"is-uvc", no_argument, nullptr, OptIsUvc},
+	{"is-vivid", no_argument, nullptr, OptIsVivid},
 	{"no-warnings", no_argument, nullptr, OptNoWarnings},
 	{"no-progress", no_argument, nullptr, OptNoProgress},
 	{"exit-on-fail", no_argument, nullptr, OptExitOnFail},
@@ -265,6 +269,8 @@ static void usage()
 	printf("  -h, --help         Display this help message.\n");
 	printf("  -C, --color <when> Highlight OK/warn/fail/FAIL strings with colors\n");
 	printf("                     <when> can be set to always, never, or auto (the default)\n");
+	printf("  --is-uvc           Run the tests as if the detected driver name was \"uvcvideo\".\n");
+	printf("  --is-vivid         Run the tests as if the detected driver name was \"vivid\".\n");
 	printf("  -n, --no-warnings  Turn off warning messages.\n");
 	printf("  -P, --no-progress  Turn off progress messages.\n");
 	printf("  -T, --trace        Trace all called ioctls.\n");
@@ -998,8 +1004,10 @@ void testNode(struct node &node, struct node &node_m2m_cap, struct node &expbuf_
 	if (node.is_v4l2()) {
 		doioctl(&node, VIDIOC_QUERYCAP, &vcap);
 		driver = reinterpret_cast<const char *>(vcap.driver);
-		is_uvcvideo = driver == "uvcvideo";
-		is_vivid = driver == "vivid";
+		if (!options[OptIsUvc] && !options[OptIsVivid]) {
+			is_uvcvideo = driver == "uvcvideo";
+			is_vivid = driver == "vivid";
+		}
 		node.bus_info = reinterpret_cast<const char *>(vcap.bus_info);
 		determine_codec_mask(node);
 	} else if (node.is_subdev()) {
@@ -1830,6 +1838,12 @@ int main(int argc, char **argv)
 				std::exit(EXIT_FAILURE);
 			}
 			break;
+		case OptIsUvc:
+			is_uvcvideo = true;
+			break;
+		case OptIsVivid:
+			is_vivid = true;
+			break;
 		case OptNoWarnings:
 			show_warnings = false;
 			break;
@@ -1867,6 +1881,10 @@ int main(int argc, char **argv)
 			fprintf(stderr, "%s ", argv[optind++]);
 		fprintf(stderr, "\n");
 		usage();
+		std::exit(EXIT_FAILURE);
+	}
+	if (options[OptIsUvc] && options[OptIsVivid]) {
+		fprintf(stderr, "Options --is-uvc and --is-vivid are mutually exclusive.\n");
 		std::exit(EXIT_FAILURE);
 	}
 
