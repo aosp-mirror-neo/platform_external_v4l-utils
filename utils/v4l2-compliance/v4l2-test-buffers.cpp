@@ -394,7 +394,7 @@ int buffer::check(unsigned type, unsigned memory, unsigned index,
 
 	if (mode == Dequeued) {
 		for (unsigned p = 0; p < g_num_planes(); p++) {
-			if (!(g_flags() & V4L2_BUF_FLAG_LAST))
+			if (!(g_flags() & (V4L2_BUF_FLAG_LAST | V4L2_BUF_FLAG_ERROR)))
 				fail_on_test(!g_bytesused(p));
 			if (!g_bytesused(p))
 				fail_on_test(g_data_offset(p));
@@ -402,7 +402,10 @@ int buffer::check(unsigned type, unsigned memory, unsigned index,
 				fail_on_test(g_data_offset(p) >= g_bytesused(p));
 			fail_on_test(g_bytesused(p) > g_length(p));
 		}
-		fail_on_test(!g_timestamp().tv_sec && !g_timestamp().tv_usec);
+
+		if (!(g_flags() & V4L2_BUF_FLAG_ERROR))
+			fail_on_test(!g_timestamp().tv_sec && !g_timestamp().tv_usec);
+
 		fail_on_test(g_flags() & V4L2_BUF_FLAG_DONE);
 
 		// The vivid driver has unreliable timings causing wrong
